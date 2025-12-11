@@ -47,8 +47,6 @@ class Milestone(Base):
     
     project = relationship("Project", back_populates="milestones")
 
-Base.metadata.create_all(bind=engine)
-
 def get_db():
     db = SessionLocal()
     try:
