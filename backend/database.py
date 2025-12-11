@@ -1,0 +1,57 @@
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, Float, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship
+from datetime import datetime
+import os
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/optic_gov")
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class Contractor(Base):
+    __tablename__ = "contractors"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    wallet_address = Column(String, unique=True, index=True)
+    company_name = Column(String)
+    email = Column(String, unique=True, index=True)
+    password_hash = Column(String)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Project(Base):
+    __tablename__ = "projects"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    description = Column(Text)
+    total_budget = Column(Float)
+    contractor_id = Column(Integer, ForeignKey("contractors.id"))
+    gov_wallet = Column(String)
+    ai_generated = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    milestones = relationship("Milestone", back_populates="project")
+
+class Milestone(Base):
+    __tablename__ = "milestones"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    description = Column(Text)
+    amount = Column(Float)
+    order_index = Column(Integer)
+    is_completed = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    project = relationship("Project", back_populates="milestones")
+
+Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
