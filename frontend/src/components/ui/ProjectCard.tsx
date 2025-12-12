@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Icon } from './Icon';
+import { CurrencyDisplay } from './CurrencyDisplay';
 import type { Project } from '@/types/project';
 
 interface ProjectCardProps {
@@ -66,9 +67,14 @@ export const ProjectCard = ({ project, isSelected, onClick }: ProjectCardProps) 
       <div className="flex justify-between items-center text-xs">
         <div className="flex flex-col">
           <span className="text-gray-500 uppercase text-[10px] font-bold">Budget</span>
-          <span className={`font-mono ${isSelected ? 'text-white' : 'text-gray-300'}`}>
-            {project.budget} ETH
-          </span>
+          <div className={`font-mono ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+            <CurrencyDisplay 
+              ethAmount={project.total_budget_eth || project.budget || 0}
+              nairaAmount={project.total_budget_ngn}
+              showBoth={true}
+              className="text-xs"
+            />
+          </div>
         </div>
         
         <div className="text-right flex flex-col items-end">

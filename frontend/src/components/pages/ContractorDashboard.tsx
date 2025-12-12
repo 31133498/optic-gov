@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
+import { CurrencyDisplay } from '@/components/ui/CurrencyDisplay';
 
 interface Project {
   id: string;
@@ -190,7 +191,7 @@ export const ContractorDashboard = () => {
               <p className="text-[#9db9a8] text-sm font-medium">Total Funds Unlocked</p>
               <Icon name="payments" className="text-[#38e07b]" />
             </div>
-            <p className="text-white text-3xl font-bold leading-tight">120 ETH</p>
+            <CurrencyDisplay ethAmount={120} showBoth={true} className="text-white text-3xl font-bold leading-tight" />
           </motion.div>
           <motion.div 
             className="flex flex-col gap-2 rounded-xl p-6 border border-[#28392f] bg-[#1c2720]/50"
@@ -288,7 +289,19 @@ export const ContractorDashboard = () => {
                           </div>
                           <div>
                             <p className="text-xs text-[#9db9a8] uppercase tracking-wider">Funds Locked</p>
-                            <p className="text-white font-medium">{project.fundsLocked}</p>
+                            <CurrencyDisplay 
+                              ethAmount={(() => {
+                                try {
+                                  const ethStr = project.fundsLocked.replace(' ETH', '');
+                                  const parsed = parseFloat(ethStr);
+                                  return isNaN(parsed) ? 0 : parsed;
+                                } catch {
+                                  return 0;
+                                }
+                              })()} 
+                              showBoth={true}
+                              className="text-white font-medium text-sm"
+                            />
                           </div>
                           <div>
                             <p className="text-xs text-[#9db9a8] uppercase tracking-wider">Milestone Status</p>

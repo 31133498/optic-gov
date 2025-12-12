@@ -3,13 +3,57 @@ import { motion } from 'framer-motion';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { projectService } from '@/services/projectService';
 
 export const GovernorDashboardPage = () => {
   const [projectName, setProjectName] = useState('');
   const [contractorAddress, setContractorAddress] = useState('');
-  const [budget, setBudget] = useState('');
+  const [budget, setBudget] = useState(0);
+  const [budgetCurrency, setBudgetCurrency] = useState<'NGN' | 'ETH'>('NGN');
   const [milestoneDescription, setMilestoneDescription] = useState('');
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [projectLocation, setProjectLocation] = useState({ lat: 6.5244, lng: 3.3792 }); // Default to Lagos
+
+  const handleCreateProject = async () => {
+    if (!projectName || !contractorAddress || !budget) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const projectData = {
+        name: projectName,
+        description: milestoneDescription || 'Infrastructure project',
+        total_budget: budget,
+        budget_currency: budgetCurrency,
+        contractor_wallet: contractorAddress,
+        use_ai_milestones: true,
+        project_latitude: projectLocation.lat,
+        project_longitude: projectLocation.lng,
+        location_tolerance_km: 1.0,
+        gov_wallet: '0x12...89', // This should come from connected wallet
+        on_chain_id: Math.floor(Math.random() * 10000)
+      };
+
+      const result = await projectService.createProject(projectData);
+      alert(`Project created successfully! ID: ${result.project_id}`);
+      
+      // Reset form
+      setProjectName('');
+      setContractorAddress('');
+      setBudget(0);
+      setMilestoneDescription('');
+      
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      alert('Failed to create project. Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   if (isNavigating) {
     return <LoadingScreen message="Loading Governor Dashboard..." />;
@@ -234,19 +278,16 @@ export const GovernorDashboardPage = () => {
                       </label>
                       <label className="flex flex-col gap-2">
                         <span className="text-white text-sm font-medium">Total Budget Allocation</span>
-                        <div className="relative">
-                          <input 
-                            className="w-full bg-[#29382f] border-none rounded-xl text-white placeholder:text-[#9eb7a8] h-14 pl-12 pr-4 focus:ring-2 focus:ring-[#38e07b] focus:ring-opacity-50 transition-all font-bold text-lg" 
-                            placeholder="5.0" 
-                            type="number"
-                            value={budget}
-                            onChange={(e) => setBudget(e.target.value)}
-                          />
-                          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-full bg-white/10">
-                            <Icon name="currency_bitcoin" size="sm" className="text-white" />
-                          </div>
-                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9eb7a8] font-bold text-sm">ETH</span>
-                        </div>
+                        <CurrencyInput
+                          value={budget}
+                          onChange={(value, currency) => {
+                            setBudget(value);
+                            setBudgetCurrency(currency);
+                          }}
+                          currency={budgetCurrency}
+                          onCurrencyChange={setBudgetCurrency}
+                          placeholder={budgetCurrency === 'NGN' ? '50000000' : '5.0'}
+                        />
                       </label>
                     </div>
                   </div>
@@ -343,24 +384,39 @@ export const GovernorDashboardPage = () => {
                         animate={{ scale: [1, 1.02, 1] }}
                         transition={{ duration: 2, repeat: Infinity }}
                       >
-                        {budget ? (parseFloat(budget) + 0.0142).toFixed(4) : '5.0142'}
+                        {budget ? (
+                          budgetCurrency === 'ETH' 
+                            ? (budget + 0.0142).toFixed(4)
+                            : ((budget / 4500000) + 0.0142).toFixed(4)
+                        ) : '5.0142'}
                       </motion.span>
                       <span className="text-xs text-[#9eb7a8] font-mono">ETH</span>
                     </div>
                   </div>
                   <div className="pt-2">
                     <motion.button 
-                      className="w-full bg-[#38e07b] hover:bg-[#2bc466] text-[#111714] h-14 rounded-full font-bold text-lg shadow-[0_4px_14px_0_rgba(56,224,123,0.39)] transition-all flex items-center justify-center gap-2 group"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      className="w-full bg-[#38e07b] hover:bg-[#2bc466] text-[#111714] h-14 rounded-full font-bold text-lg shadow-[0_4px_14px_0_rgba(56,224,123,0.39)] transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+                      whileHover={{ scale: isCreating ? 1 : 1.02 }}
+                      whileTap={{ scale: isCreating ? 1 : 0.98 }}
+                      onClick={handleCreateProject}
+                      disabled={isCreating}
                     >
-                      <span>Deploy & Fund</span>
-                      <motion.div
-                        animate={{ x: [0, 4, 0] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      >
-                        <Icon name="arrow_forward" />
-                      </motion.div>
+                      {isCreating ? (
+                        <>
+                          <Icon name="hourglass_empty" className="animate-spin" />
+                          <span>Creating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Deploy & Fund</span>
+                          <motion.div
+                            animate={{ x: [0, 4, 0] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                          >
+                            <Icon name="arrow_forward" />
+                          </motion.div>
+                        </>
+                      )}
                     </motion.button>
                     <p className="text-center text-xs text-[#9eb7a8] mt-3">
                       By deploying, you agree to the <a className="text-[#38e07b] hover:underline" href="#">DAO Constitution</a>.

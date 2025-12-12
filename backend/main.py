@@ -16,7 +16,8 @@ import shutil
 import subprocess
 import json as json_lib
 from geopy.distance import geodesic
-
+import time
+from datetime import datetime, timedelta
 load_dotenv()
 
 app = FastAPI(title="Optic-Gov AI Oracle")
@@ -43,8 +44,61 @@ contract_address = os.getenv("CONTRACT_ADDRESS")
 print(f"Web3 connected: {w3.is_connected()}")
 print(f"Contract address: {contract_address}")
 print(f"Oracle wallet: {os.getenv('ORACLE_WALLET_ADDRESS')}")
-print(f"Gemini API configured: {'✓' if os.getenv('GEMINI_API_KEY') else '✗'}")
+print(f"Gemini API configured: {'YES' if os.getenv('GEMINI_API_KEY') else 'NO'}")
 print(f"Database URL: {os.getenv('DATABASE_URL')}")
+
+# Currency conversion cache
+eth_ngn_cache = {"rate": None, "timestamp": None}
+CACHE_DURATION = 300  # 5 minutes
+
+def get_eth_ngn_rate():
+    """Get ETH to NGN exchange rate with caching"""
+    current_time = time.time()
+    
+    # Check if cache is valid
+    if (eth_ngn_cache["rate"] is not None and 
+        eth_ngn_cache["timestamp"] is not None and 
+        current_time - eth_ngn_cache["timestamp"] < CACHE_DURATION):
+        return eth_ngn_cache["rate"]
+    
+    try:
+        # Get ETH price in USD from CoinGecko
+        eth_response = requests.get(
+            "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
+            timeout=10
+        )
+        eth_usd = eth_response.json()["ethereum"]["usd"]
+        
+        # Get USD to NGN rate from exchangerate-api
+        usd_ngn_response = requests.get(
+            "https://api.exchangerate-api.com/v4/latest/USD",
+            timeout=10
+        )
+        usd_ngn = usd_ngn_response.json()["rates"]["NGN"]
+        
+        # Calculate ETH to NGN rate
+        eth_ngn_rate = eth_usd * usd_ngn
+        
+        # Update cache
+        eth_ngn_cache["rate"] = eth_ngn_rate
+        eth_ngn_cache["timestamp"] = current_time
+        
+        return eth_ngn_rate
+        
+    except Exception as e:
+        print(f"Error fetching exchange rate: {e}")
+        # Return cached rate if available, otherwise default
+        return eth_ngn_cache["rate"] if eth_ngn_cache["rate"] else 2500000  # Fallback rate
+
+def convert_ngn_to_eth(ngn_amount: float) -> float:
+    """Convert NGN amount to ETH"""
+    rate = get_eth_ngn_rate()
+    return ngn_amount / rate
+
+def convert_eth_to_ngn(eth_amount: float) -> float:
+    """Convert ETH amount to NGN"""
+    rate = get_eth_ngn_rate()
+    return eth_amount * rate
 
 class ContractorRegister(BaseModel):
     wallet_address: str
@@ -66,6 +120,7 @@ class ProjectCreate(BaseModel):
     name: str
     description: str
     total_budget: float
+    budget_currency: str = "NGN"  # "NGN" or "ETH"
     contractor_wallet: str
     use_ai_milestones: bool
     manual_milestones: Optional[List[str]] = None
@@ -92,6 +147,17 @@ class VerificationResponse(BaseModel):
     confidence_score: int
     reasoning: str
 
+class CurrencyConversion(BaseModel):
+    naira_amount: float
+    eth_amount: float
+    exchange_rate: float
+    timestamp: str
+
+class ConvertRequest(BaseModel):
+    amount: float
+    from_currency: str  # "NGN" or "ETH"
+    to_currency: str    # "NGN" or "ETH"
+
 @app.post("/register")
 async def register_contractor(contractor: ContractorRegister, db: Session = Depends(get_db)):
     if db.query(Contractor).filter(Contractor.email == contractor.email).first():
@@ -116,6 +182,36 @@ async def login_contractor(login: ContractorLogin, db: Session = Depends(get_db)
     
     access_token = create_access_token(data={"sub": contractor.wallet_address})
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+
+@app.post("/convert-currency")
+async def convert_currency(request: ConvertRequest):
+    """Convert between NGN and ETH"""
+    try:
+        rate = get_eth_ngn_rate()
+        
+        if request.from_currency.upper() == "NGN" and request.to_currency.upper() == "ETH":
+            converted_amount = convert_ngn_to_eth(request.amount)
+            return CurrencyConversion(
+                naira_amount=request.amount,
+                eth_amount=converted_amount,
+                exchange_rate=rate,
+                timestamp=datetime.now().isoformat()
+            )
+        elif request.from_currency.upper() == "ETH" and request.to_currency.upper() == "NGN":
+            converted_amount = convert_eth_to_ngn(request.amount)
+            return CurrencyConversion(
+                naira_amount=converted_amount,
+                eth_amount=request.amount,
+                exchange_rate=rate,
+                timestamp=datetime.now().isoformat()
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Only NGN<->ETH conversion supported")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
 
 @app.post("/generate-milestones")
 async def generate_milestones(request: MilestoneGenerate):
@@ -159,11 +255,20 @@ async def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     if not contractor:
         raise HTTPException(status_code=404, detail="Contractor not found")
     
-    # Create project
+    # Convert budget to ETH if provided in NGN
+    budget_eth = project.total_budget
+    budget_ngn = project.total_budget
+    
+    if project.budget_currency.upper() == "NGN":
+        budget_eth = convert_ngn_to_eth(project.total_budget)
+    else:
+        budget_ngn = convert_eth_to_ngn(project.total_budget)
+    
+    # Create project (store both NGN and ETH amounts)
     db_project = Project(
         name=project.name,
         description=project.description,
-        total_budget=project.total_budget,
+        total_budget=budget_eth,  # Store ETH amount for blockchain
         contractor_id=contractor.id,
         ai_generated=project.use_ai_milestones,
         project_latitude=project.project_latitude,
@@ -187,8 +292,8 @@ async def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     else:
         milestone_descriptions = project.manual_milestones
     
-    # Create milestone records
-    milestone_amount = project.total_budget / len(milestone_descriptions)
+    # Create milestone records (use ETH amount for milestones)
+    milestone_amount = budget_eth / len(milestone_descriptions)
     for i, desc in enumerate(milestone_descriptions):
         milestone = Milestone(
             project_id=db_project.id,
@@ -199,19 +304,67 @@ async def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
         db.add(milestone)
     
     db.commit()
-    return {"project_id": db_project.id, "milestones_created": len(milestone_descriptions)}
+    return {
+        "project_id": db_project.id, 
+        "milestones_created": len(milestone_descriptions),
+        "budget_eth": budget_eth,
+        "budget_ngn": budget_ngn,
+        "exchange_rate": get_eth_ngn_rate()
+    }
 
 @app.get("/projects")
 async def get_all_projects(db: Session = Depends(get_db)):
     projects = db.query(Project).all()
-    return projects
+    
+    # Add currency conversion for each project
+    projects_with_currency = []
+    for project in projects:
+        project_dict = {
+            "id": project.id,
+            "name": project.name,
+            "description": project.description,
+            "total_budget_eth": project.total_budget,
+            "total_budget_ngn": convert_eth_to_ngn(project.total_budget),
+            "contractor_id": project.contractor_id,
+            "ai_generated": project.ai_generated,
+            "project_latitude": project.project_latitude,
+            "project_longitude": project.project_longitude,
+            "location_tolerance_km": project.location_tolerance_km,
+            "gov_wallet": project.gov_wallet,
+            "on_chain_id": project.on_chain_id,
+            "created_at": project.created_at
+        }
+        projects_with_currency.append(project_dict)
+    
+    return {
+        "projects": projects_with_currency,
+        "exchange_rate": get_eth_ngn_rate()
+    }
 
 @app.get("/projects/{project_id}")
 async def get_project(project_id: int, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return project
+    
+    # Add currency conversion for frontend display
+    project_dict = {
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "total_budget_eth": project.total_budget,
+        "total_budget_ngn": convert_eth_to_ngn(project.total_budget),
+        "contractor_id": project.contractor_id,
+        "ai_generated": project.ai_generated,
+        "project_latitude": project.project_latitude,
+        "project_longitude": project.project_longitude,
+        "location_tolerance_km": project.location_tolerance_km,
+        "gov_wallet": project.gov_wallet,
+        "on_chain_id": project.on_chain_id,
+        "created_at": project.created_at,
+        "exchange_rate": get_eth_ngn_rate()
+    }
+    return project_dict
 
 @app.put("/projects/{project_id}")
 async def update_project(project_id: int, project_update: ProjectUpdate, db: Session = Depends(get_db)):
@@ -387,6 +540,56 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "AI Oracle is watching"}
+
+@app.get("/eth-rate")
+async def get_current_eth_rate():
+    """Get current ETH to NGN exchange rate"""
+    rate = get_eth_ngn_rate()
+    return {
+        "eth_to_ngn_rate": rate,
+        "timestamp": datetime.now().isoformat(),
+        "cache_age_seconds": time.time() - (eth_ngn_cache["timestamp"] or 0)
+    }
+
+@app.get("/exchange-rate")
+async def get_exchange_rate_frontend():
+    """Get current ETH to NGN exchange rate (frontend compatibility)"""
+    try:
+        rate = get_eth_ngn_rate()
+        return {
+            "eth_to_ngn": rate,
+            "ngn_to_eth": 1 / rate,
+            "timestamp": datetime.now().isoformat(),
+            "cached": time.time() - (eth_ngn_cache["timestamp"] or 0) < CACHE_DURATION
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get exchange rate: {str(e)}")
+
+@app.get("/convert/ngn-to-eth/{naira_amount}")
+async def convert_ngn_to_eth_endpoint(naira_amount: float):
+    """Quick convert NGN to ETH"""
+    rate = get_eth_ngn_rate()
+    eth_amount = naira_amount / rate
+    return {
+        "naira_amount": naira_amount,
+        "eth_amount": eth_amount,
+        "exchange_rate": rate,
+        "formatted_eth": f"{eth_amount:.6f} ETH",
+        "formatted_naira": f"₦{naira_amount:,.2f}"
+    }
+
+@app.get("/convert/eth-to-ngn/{eth_amount}")
+async def convert_eth_to_ngn_endpoint(eth_amount: float):
+    """Quick convert ETH to NGN"""
+    rate = get_eth_ngn_rate()
+    naira_amount = eth_amount * rate
+    return {
+        "eth_amount": eth_amount,
+        "naira_amount": naira_amount,
+        "exchange_rate": rate,
+        "formatted_eth": f"{eth_amount:.6f} ETH",
+        "formatted_naira": f"₦{naira_amount:,.2f}"
+    }
 
 if __name__ == "__main__":
     import uvicorn

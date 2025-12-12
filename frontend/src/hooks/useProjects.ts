@@ -1,123 +1,91 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Project, ProjectFilters } from '@/types/project';
+import { projectService } from '@/services/projectService';
 
+// Fallback mock projects for when backend is unavailable
 const mockProjects: Project[] = [
   {
-    id: 'NY-2024-882',
-    title: 'Downtown Bridge Repair',
-    location: 'Manhattan',
+    id: 'DEMO-001',
+    title: 'Lagos-Ibadan Expressway Repair',
+    location: 'Lagos State',
     status: 'completed',
-    budget: 500,
+    budget: 0.02, // ETH equivalent
+    total_budget_ngn: 50000000, // 50M Naira
+    total_budget_eth: 0.02,
+    budget_currency: 'NGN',
     aiConfidence: 98.5,
-    coordinates: { lat: 40.7589, lng: -73.9851 },
-    evidence: {
-      imageUrl: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=600&h=400&fit=crop',
-      aiAnalysis: 'Visual confirmation of structural integrity. Rebar density matches schematic V.2.',
-      transactionHash: '0x71C...9A23',
-      fundsReleased: 50
-    }
+    coordinates: { lat: 6.5244, lng: 3.3792 }
   },
   {
-    id: 'NY-2024-421',
-    title: 'East Side Highway',
-    location: 'Queens',
+    id: 'DEMO-002', 
+    title: 'Abuja Metro Line Extension',
+    location: 'FCT Abuja',
     status: 'in-progress',
-    budget: 1200,
+    budget: 0.48, // ETH equivalent
+    total_budget_ngn: 1200000000, // 1.2B Naira
+    total_budget_eth: 0.48,
+    budget_currency: 'NGN',
     progress: 45,
-    coordinates: { lat: 40.7282, lng: -73.7949 }
+    coordinates: { lat: 9.0765, lng: 7.3986 }
   },
   {
-    id: 'NY-2024-990',
-    title: 'Central Station Upgrade',
-    location: 'Midtown',
+    id: 'DEMO-003',
+    title: 'Port Harcourt Bridge Construction',
+    location: 'Rivers State',
     status: 'pending',
-    budget: 3500,
+    budget: 1.4, // ETH equivalent
+    total_budget_ngn: 3500000000, // 3.5B Naira
+    total_budget_eth: 1.4,
+    budget_currency: 'NGN',
     votes: 82,
-    coordinates: { lat: 40.7505, lng: -73.9934 }
-  },
-  {
-    id: 'NY-2023-112',
-    title: 'Metro Tunnel B',
-    location: 'Brooklyn',
-    status: 'completed',
-    budget: 800,
-    aiConfidence: 99.1,
-    coordinates: { lat: 40.6892, lng: -73.9442 }
-  },
-  {
-    id: 'NY-2024-445',
-    title: 'Bronx Water Treatment',
-    location: 'Bronx',
-    status: 'in-progress',
-    budget: 2200,
-    progress: 67,
-    coordinates: { lat: 40.8448, lng: -73.8648 }
-  },
-  {
-    id: 'NY-2024-556',
-    title: 'Staten Island Ferry Dock',
-    location: 'Staten Island',
-    status: 'pending',
-    budget: 1800,
-    votes: 156,
-    coordinates: { lat: 40.6438, lng: -74.0740 }
-  },
-  {
-    id: 'NY-2024-667',
-    title: 'FDR Drive Resurfacing',
-    location: 'Manhattan',
-    status: 'completed',
-    budget: 950,
-    aiConfidence: 94.2,
-    coordinates: { lat: 40.7505, lng: -73.9734 }
-  },
-  {
-    id: 'NY-2024-778',
-    title: 'Queens Boulevard Lighting',
-    location: 'Queens',
-    status: 'in-progress',
-    budget: 650,
-    progress: 23,
-    coordinates: { lat: 40.7282, lng: -73.8049 }
-  },
-  {
-    id: 'NY-2024-889',
-    title: 'Brooklyn Heights Promenade',
-    location: 'Brooklyn',
-    status: 'pending',
-    budget: 1400,
-    votes: 203,
-    coordinates: { lat: 40.6962, lng: -73.9942 }
-  },
-  {
-    id: 'NY-2024-101',
-    title: 'Harlem River Walkway',
-    location: 'Manhattan',
-    status: 'completed',
-    budget: 750,
-    aiConfidence: 96.8,
-    coordinates: { lat: 40.8176, lng: -73.9482 }
+    coordinates: { lat: 4.8156, lng: 7.0498 }
   }
 ];
 
 export const useProjects = () => {
   const [filters, setFilters] = useState<ProjectFilters>({ status: 'all' });
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [projects, setProjects] = useState<Project[]>(mockProjects);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+
+  // Fetch projects from backend
+  const fetchProjects = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await projectService.getAllProjects();
+      const transformedProjects = response.projects.map(p => projectService.transformProject(p));
+      setProjects(transformedProjects.length > 0 ? transformedProjects : mockProjects);
+      setExchangeRate(response.exchange_rate);
+    } catch (err) {
+      console.error('Failed to fetch projects:', err);
+      setError('Failed to load projects from server. Using demo data.');
+      setProjects(mockProjects); // Fallback to mock data
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
 
   const filteredProjects = useMemo(() => {
-    return mockProjects.filter(project => {
+    return projects.filter(project => {
       if (filters.status && filters.status !== 'all' && project.status !== filters.status) {
         return false;
       }
       if (filters.search) {
         const search = filters.search.toLowerCase();
         return project.title.toLowerCase().includes(search) ||
-               project.id.toLowerCase().includes(search) ||
-               project.location.toLowerCase().includes(search);
+               project.id.toString().toLowerCase().includes(search) ||
+               (project.location && project.location.toLowerCase().includes(search));
       }
       return true;
     });
-  }, [filters]);
+  }, [projects, filters]);
 
   const updateFilters = (newFilters: Partial<ProjectFilters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -125,10 +93,14 @@ export const useProjects = () => {
 
   return {
     projects: filteredProjects,
-    allProjects: mockProjects,
+    allProjects: projects,
     filters,
     selectedProject,
+    loading,
+    error,
+    exchangeRate,
     updateFilters,
-    setSelectedProject
+    setSelectedProject,
+    refetch: fetchProjects
   };
 };
