@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -15,6 +16,40 @@ const roleOptions = [
 export const RegistrationForm = () => {
   const { data, errors, isLoading, updateField, submit } = useForm();
   const passwordToggle = usePasswordToggle();
+  const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
+
+  const checkWalletConnection = async () => {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          setConnectedWallet(accounts[0]);
+          // Auto-fill wallet address if not already filled
+          if (!data.walletAddress) {
+            updateField('walletAddress', accounts[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check wallet connection:', error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    checkWalletConnection();
+    
+    // Listen for account changes
+    if (typeof window !== 'undefined' && window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts: string[]) => {
+        if (accounts.length > 0) {
+          setConnectedWallet(accounts[0]);
+          updateField('walletAddress', accounts[0]);
+        } else {
+          setConnectedWallet(null);
+        }
+      });
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,12 +120,18 @@ export const RegistrationForm = () => {
 
         <Input
           id="walletAddress"
-          label="Ethereum Wallet Address"
+          label={`Ethereum Wallet Address ${connectedWallet ? '(Auto-filled from connected wallet)' : ''}`}
           icon="account_balance_wallet"
-          placeholder="0x..."
+          placeholder={connectedWallet ? connectedWallet : "0x..."}
           value={data.walletAddress}
           onChange={(e) => updateField('walletAddress', e.target.value)}
           error={errors.walletAddress}
+          className={connectedWallet ? 'border-green-500' : ''}
+          rightElement={connectedWallet ? (
+            <div className="text-green-500 text-xs font-medium">
+              <Icon name="check_circle" size="sm" />
+            </div>
+          ) : null}
         />
 
         <Input

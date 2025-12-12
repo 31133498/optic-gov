@@ -1,6 +1,6 @@
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
-import { useWallet } from '@/hooks/useWallet';
 
 const navigation = [
   { name: 'How it Works', href: '#how-it-works' },
@@ -10,17 +10,65 @@ const navigation = [
 ];
 
 export const Header = () => {
-  const { isConnected, isConnecting, address, connectWallet } = useWallet();
+  const [isConnected, setIsConnected] = useState(false);
+  const [address, setAddress] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const handleConnectWallet = () => {
-    if (!isConnected) {
-      connectWallet();
+  const checkConnection = async () => {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          setIsConnected(true);
+          setAddress(accounts[0]);
+        }
+      } catch (error) {
+        console.error('Failed to check connection:', error);
+      }
+    }
+  };
+
+  const connectWallet = async () => {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      try {
+        setIsConnecting(true);
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        if (accounts.length > 0) {
+          setIsConnected(true);
+          setAddress(accounts[0]);
+          console.log('Wallet connected:', accounts[0]);
+        }
+      } catch (error) {
+        console.error('Failed to connect wallet:', error);
+        alert('Failed to connect wallet. Please try again.');
+      } finally {
+        setIsConnecting(false);
+      }
+    } else {
+      alert('Please install MetaMask!');
     }
   };
 
   const formatAddress = (addr: string) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
+
+  useEffect(() => {
+    checkConnection();
+    
+    // Listen for account changes
+    if (typeof window !== 'undefined' && window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts: string[]) => {
+        if (accounts.length > 0) {
+          setIsConnected(true);
+          setAddress(accounts[0]);
+        } else {
+          setIsConnected(false);
+          setAddress(null);
+        }
+      });
+    }
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-solid border-border-dark bg-background-dark/80 backdrop-blur-md">
@@ -83,9 +131,9 @@ export const Header = () => {
             </a>
 
             <Button
-              onClick={handleConnectWallet}
+              onClick={connectWallet}
               loading={isConnecting}
-              className="shadow-primary"
+              className={`shadow-primary ${isConnected ? 'bg-green-600 hover:bg-green-700' : ''}`}
             >
               <Icon name="account_balance_wallet" size="sm" />
               <span className="truncate">
