@@ -331,6 +331,10 @@ async def release_funds(project_id: int, milestone_index: int):
     except Exception as e:
         print(f"Blockchain transaction failed: {e}")
 
+@app.get("/")
+async def root():
+    return {"message": "Optic-Gov AI Oracle API", "docs": "/docs", "health": "/health"}
+
 @app.get("/health")
 async def health_check():
     return {"status": "AI Oracle is watching"}
