@@ -1,374 +1,408 @@
 import { useState } from 'react';
-import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
-import { Modal } from '../ui/Modal';
-import { MapPin } from '../ui/MapPin';
-import { ProgressBar } from '../ui/ProgressBar';
-import { Project } from '../../types/project';
+import { useNavigate } from 'react-router-dom';
+import { searchPlaces, Place } from '@/services/placesService';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
+import { LeafletMap } from '@/components/ui/LeafletMap';
+import { SearchBox } from '@/components/ui/SearchBox';
 
-// Mock data
-const mockProjects: Project[] = [
-  {
-    id: 'ny-2024-882',
-    name: 'Downtown Bridge Repair',
-    description: 'Major infrastructure repair project',
-    location: 'Manhattan, NY',
-    contractAddress: '0x71C...9A23',
-    totalBudget: 500,
-    ethLocked: 500,
-    ethReleased: 200,
-    status: 'verified',
-    progress: 98.5,
-    aiConfidence: 98.5,
-    contractor: {
-      name: 'Apex Infrastructure Ltd.',
-      address: '0x83...12F4',
-      trustScore: 98,
-      completedProjects: 14,
-    },
-    milestones: [],
-    evidence: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'ny-2024-421',
-    name: 'East Side Highway',
-    description: 'Highway expansion project',
-    location: 'Queens, NY',
-    contractAddress: '0x42A...8B1',
-    totalBudget: 1200,
-    ethLocked: 1200,
-    ethReleased: 540,
-    status: 'in-progress',
-    progress: 45,
-    contractor: {
-      name: 'Metro Construction Co.',
-      address: '0x91B...3C2',
-      trustScore: 92,
-      completedProjects: 8,
-    },
-    milestones: [],
-    evidence: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+interface Project {
+  id: string;
+  name: string;
+  status: 'completed' | 'pending' | 'in-progress';
+  budget: string;
+  location: string;
+  completion: number;
+  place?: Place;
+}
 
-const mapPins = [
-  { id: '1', projectId: 'ny-2024-882', position: { top: '45%', left: '52%' }, status: 'verified' as const },
-  { id: '2', projectId: 'ny-2024-421', position: { top: '30%', left: '35%' }, status: 'alert' as const },
-  { id: '3', projectId: 'ny-2024-990', position: { top: '60%', left: '65%' }, status: 'in-progress' as const },
+const defaultProjects: Project[] = [
+  { id: '1', name: 'Third Mainland Bridge Repair', status: 'completed', budget: '500 ETH', location: 'Lagos Island', completion: 100 },
+  { id: '2', name: 'Abuja-Kaduna Expressway', status: 'in-progress', budget: '1,200 ETH', location: 'FCT Abuja', completion: 45 },
+  { id: '3', name: 'Lagos Blue Line Rail', status: 'pending', budget: '3,500 ETH', location: 'Victoria Island', completion: 0 },
+  { id: '4', name: 'Port Harcourt Refinery', status: 'completed', budget: '800 ETH', location: 'Rivers State', completion: 100 },
 ];
 
 export const TransparencyMapPage = () => {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Place[]>([]);
+  const [projects, setProjects] = useState<Project[]>(defaultProjects);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(defaultProjects[0]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const navigate = useNavigate();
 
-  const handlePinClick = (pinId: string) => {
-    const pin = mapPins.find(p => p.id === pinId);
-    if (pin) {
-      const project = mockProjects.find(p => p.id === pin.projectId);
-      if (project) {
-        setSelectedProject(project);
+  const handleSearch = async (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      setIsSearching(true);
+      try {
+        const results = await searchPlaces(searchQuery);
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Search failed:', error);
+      } finally {
+        setIsSearching(false);
       }
     }
   };
 
+  const handlePlaceSelect = (place: Place) => {
+    const newProject: Project = {
+      id: `search-${Date.now()}`,
+      name: generateProjectName(place.displayName.text),
+      status: 'pending',
+      budget: 'TBD',
+      location: place.formattedAddress,
+      completion: 0,
+      place
+    };
+    
+    setIsNavigating(true);
+    localStorage.setItem('selectedProject', JSON.stringify(newProject));
+    
+    // Simulate loading time for better UX
+    setTimeout(() => {
+      navigate(`/project/${newProject.id}`);
+    }, 1500);
+  };
+
+  const handleProjectSelect = (project: Project) => {
+    setIsNavigating(true);
+    localStorage.setItem('selectedProject', JSON.stringify(project));
+    
+    setTimeout(() => {
+      navigate(`/project/${project.id}`);
+    }, 1200);
+  };
+
+  const generateProjectName = (locationName: string): string => {
+    const projectTypes = [
+      'Infrastructure Development',
+      'Road Construction', 
+      'Bridge Repair',
+      'Public Facility Upgrade',
+      'Urban Development',
+      'Transportation Hub'
+    ];
+    const randomType = projectTypes[Math.floor(Math.random() * projectTypes.length)];
+    return `${locationName} ${randomType}`;
+  };
+
+  if (isNavigating) {
+    return <LoadingScreen message="Loading project details..." />;
+  }
+
   return (
-    <div className="min-h-screen bg-background-dark text-white overflow-hidden relative">
-      {/* Map Background */}
-      <div className="absolute inset-0 z-0">
-        <div className="w-full h-full relative">
-          <div 
-            className="w-full h-full bg-cover bg-center opacity-30 grayscale contrast-125"
-            style={{
-              backgroundImage: "url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1920&h=1080&fit=crop')"
-            }}
-          />
-          <div className="absolute inset-0 bg-background-dark/60" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-transparent" />
-        </div>
+    <div className="bg-[#122017] text-white font-display min-h-screen w-full relative selection:bg-[#38e07b] selection:text-[#122017] overflow-auto">
 
-        {/* Map Pins */}
-        {mapPins.map((pin) => {
-          const project = mockProjects.find(p => p.id === pin.projectId);
-          return (
-            <MapPin
-              key={pin.id}
-              status={pin.status}
-              position={{ top: pin.position.top, left: pin.position.left }}
-              onClick={() => handlePinClick(pin.id)}
-              tooltip={
-                project && (
-                  <div>
-                    <div className="text-white font-bold text-sm">{project.name}</div>
-                    <div className="text-primary text-xs mt-1 flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                      </svg>
-                      {project.status === 'verified' ? 'Verified' : 'In Progress'}
-                    </div>
-                  </div>
-                )
-              }
-            />
-          );
-        })}
-      </div>
-
-      {/* UI Overlay */}
+      
+      {/* UI Overlay Layer */}
       <div className="relative z-10 flex flex-col h-full w-full pointer-events-none">
-        {/* Header */}
+        {/* Top Navigation & Stats HUD */}
         <header className="w-full flex flex-col xl:flex-row items-center justify-between p-4 md:px-8 pt-6 gap-4 pointer-events-auto">
-          {/* Logo */}
-          <div className="flex items-center gap-3 bg-card-dark/80 backdrop-blur-md pl-2 pr-6 py-2 rounded-full border border-border-dark shadow-xl">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center text-background-dark">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-              </svg>
+          {/* Logo Area */}
+          <div className="flex items-center gap-3 bg-[#1c2620]/80 backdrop-blur-md pl-2 pr-6 py-2 rounded-full border border-[#29382f] shadow-xl">
+            <div className="size-10 bg-gradient-to-br from-[#38e07b] to-emerald-800 rounded-full flex items-center justify-center text-[#122017]">
+              <span className="material-symbols-outlined text-2xl">visibility</span>
             </div>
             <div>
               <h1 className="text-white text-lg font-bold leading-none tracking-tight">Optic-Gov</h1>
-              <span className="text-primary text-xs uppercase tracking-widest font-semibold opacity-80">
-                Transparency Layer
-              </span>
+              <span className="text-[#38e07b] text-[10px] uppercase tracking-widest font-semibold opacity-80">Transparency Layer</span>
             </div>
           </div>
-
+          
           {/* Stats HUD */}
           <div className="hidden md:flex flex-1 max-w-3xl justify-center">
-            <div className="flex items-center gap-1 bg-card-dark/80 backdrop-blur-md p-1.5 rounded-full border border-border-dark shadow-xl">
+            <div className="flex items-center gap-1 bg-[#1c2620]/80 backdrop-blur-md p-1.5 rounded-full border border-[#29382f] shadow-xl">
               <div className="flex flex-col md:flex-row items-center gap-6 px-6 py-2">
                 <div className="flex flex-col items-center md:items-start">
-                  <span className="text-xs text-text-secondary uppercase font-bold tracking-wider">ETH Locked</span>
-                  <span className="text-white font-mono font-bold text-lg leading-none">
-                    12,450 <span className="text-xs text-text-secondary">ETH</span>
-                  </span>
+                  <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">ETH Locked</span>
+                  <span className="text-white font-mono font-bold text-lg leading-none">12,450 <span className="text-xs text-gray-500">ETH</span></span>
                 </div>
-                <div className="w-px h-8 bg-border-dark hidden md:block" />
+                <div className="w-px h-8 bg-[#29382f] hidden md:block" />
                 <div className="flex flex-col items-center md:items-start">
-                  <span className="text-xs text-text-secondary uppercase font-bold tracking-wider">ETH Released</span>
-                  <span className="text-white font-mono font-bold text-lg leading-none">
-                    4,200 <span className="text-xs text-text-secondary">ETH</span>
-                  </span>
+                  <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">ETH Released</span>
+                  <span className="text-white font-mono font-bold text-lg leading-none">4,200 <span className="text-xs text-gray-500">ETH</span></span>
                 </div>
-                <div className="w-px h-8 bg-border-dark hidden md:block" />
+                <div className="w-px h-8 bg-[#29382f] hidden md:block" />
                 <div className="flex flex-col items-center md:items-start">
-                  <span className="text-xs text-primary uppercase font-bold tracking-wider">Corruption Prevented</span>
-                  <span className="text-primary font-mono font-bold text-lg leading-none">$12,040,000</span>
+                  <span className="text-[10px] text-[#38e07b] uppercase font-bold tracking-wider">Corruption Prevented</span>
+                  <span className="text-[#38e07b] font-mono font-bold text-lg leading-none">$12,040,000</span>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Actions */}
+          
+          {/* Actions Area */}
           <div className="flex gap-3">
-            <Button variant="ghost" size="sm" className="w-11 h-11 rounded-full relative">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
-              </svg>
-              <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-card-dark" />
-            </Button>
-            <Button className="shadow-primary">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
-              </svg>
-              Connect Wallet
-            </Button>
+            <button className="size-11 flex items-center justify-center rounded-full bg-[#1c2620]/80 backdrop-blur-md border border-[#29382f] text-white hover:bg-[#29382f] transition-colors relative">
+              <span className="material-symbols-outlined">notifications</span>
+              <span className="absolute top-2 right-2.5 size-2.5 bg-red-500 rounded-full border-2 border-[#1c2620]" />
+            </button>
           </div>
         </header>
-
-        {/* Main Content */}
-        <div className="flex-1 flex overflow-hidden p-4 md:px-8 pb-8 gap-6">
-          {/* Sidebar */}
-          <aside className="pointer-events-auto w-full max-w-[400px] h-full flex flex-col bg-card-dark/90 backdrop-blur-xl rounded-2xl border border-border-dark shadow-2xl overflow-hidden shrink-0">
-            {/* Search Header */}
-            <div className="p-5 border-b border-border-dark bg-card-dark/50">
-              <div className="relative group">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                </svg>
-                <input
-                  className="w-full bg-background-dark border border-border-dark rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder-text-secondary focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none"
-                  placeholder="Search projects by ID or location..."
-                  type="text"
+        
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col p-4 md:px-8 pb-8 gap-6">
+          {/* Top Section - Sidebar and Map */}
+          <div className="flex gap-6 h-[65vh] mb-6">
+            {/* Left Sidebar */}
+            <aside className="pointer-events-auto w-full max-w-[400px] flex flex-col bg-[#1c2620]/90 backdrop-blur-xl rounded-2xl border border-[#29382f] shadow-2xl overflow-hidden shrink-0">
+              {/* Search Header */}
+              <div className="p-5 border-b border-[#29382f] bg-[#1c2620]/50">
+                <SearchBox 
+                  onLocationSelect={(lat, lon, projectTitle) => {
+                    const newProject: Project = {
+                      id: `search-${Date.now()}`,
+                      name: projectTitle,
+                      status: Math.random() > 0.5 ? 'pending' : 'in-progress',
+                      budget: `${Math.floor(Math.random() * 2000 + 500)} ETH`,
+                      location: projectTitle.split(' ').slice(0, -2).join(' '),
+                      completion: Math.floor(Math.random() * 100),
+                      place: {
+                        id: `place-${Date.now()}`,
+                        displayName: { text: projectTitle },
+                        formattedAddress: projectTitle,
+                        location: { latitude: lat, longitude: lon }
+                      }
+                    };
+                    setProjects(prev => [newProject, ...prev]);
+                    setSelectedProject(newProject);
+                    // Store project for navigation
+                    localStorage.setItem('selectedProject', JSON.stringify(newProject));
+                  }}
+                  placeholder="Search Nigerian locations..."
                 />
-              </div>
-
-              {/* Filters */}
-              <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
-                {[
-                  { key: 'all', label: 'All Projects' },
-                  { key: 'pending', label: 'Pending', color: 'bg-red-500' },
-                  { key: 'in-progress', label: 'In-Progress', color: 'bg-yellow-400' },
-                  { key: 'verified', label: 'Completed', color: 'bg-primary' },
-                ].map((filter) => (
-                  <button
-                    key={filter.key}
-                    onClick={() => setActiveFilter(filter.key)}
-                    className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
-                      activeFilter === filter.key
-                        ? 'bg-border-dark text-white border border-transparent'
-                        : 'bg-transparent border border-border-dark text-text-secondary hover:text-white hover:bg-border-dark'
-                    }`}
-                  >
-                    {filter.color && <span className={`w-1.5 h-1.5 rounded-full ${filter.color}`} />}
-                    {filter.label}
+                
+                {/* Filters */}
+                <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+                  <button className="px-4 py-1.5 rounded-full bg-[#29382f] text-white text-xs font-medium border border-transparent hover:border-[#38e07b]/50 transition-all whitespace-nowrap">All Projects</button>
+                  <button className="px-4 py-1.5 rounded-full bg-transparent border border-[#29382f] text-gray-400 text-xs font-medium hover:text-white hover:bg-[#29382f] transition-all whitespace-nowrap flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Pending
                   </button>
-                ))}
+                  <button className="px-4 py-1.5 rounded-full bg-transparent border border-[#29382f] text-gray-400 text-xs font-medium hover:text-white hover:bg-[#29382f] transition-all whitespace-nowrap flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" /> In-Progress
+                  </button>
+                  <button className="px-4 py-1.5 rounded-full bg-transparent border border-[#29382f] text-gray-400 text-xs font-medium hover:text-white hover:bg-[#29382f] transition-all whitespace-nowrap flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#38e07b]" /> Completed
+                  </button>
+                </div>
               </div>
-            </div>
-
-            {/* Project List */}
-            <div className="flex-1 overflow-y-auto">
-              {mockProjects.map((project) => (
-                <div
-                  key={project.id}
-                  className={`p-4 border-b border-border-dark/50 hover:bg-border-dark/30 cursor-pointer transition-colors ${
-                    selectedProject?.id === project.id ? 'bg-border-dark/20 border-l-4 border-l-primary' : 'border-l-4 border-l-transparent'
-                  }`}
-                  onClick={() => setSelectedProject(project)}
+              
+              {/* Project List */}
+              <div className="flex-1 overflow-y-auto">
+                {/* Search Results */}
+                {searchResults.length > 0 && (
+                  <div className="p-4 border-b border-[#29382f] bg-[#38e07b]/5">
+                    <h4 className="text-xs font-bold text-[#38e07b] mb-3 uppercase tracking-wider">Search Results</h4>
+                    {searchResults.slice(0, 3).map((place, index) => (
+                      <div 
+                        key={place.id}
+                        onClick={() => handlePlaceSelect(place)}
+                        className="p-3 mb-2 bg-[#29382f]/50 rounded-lg cursor-pointer hover:bg-[#29382f] transition-colors border-l-4 border-l-[#38e07b]"
+                      >
+                        <h5 className="font-medium text-white text-sm mb-1">{generateProjectName(place.displayName.text)}</h5>
+                        <p className="text-xs text-gray-400">{place.formattedAddress}</p>
+                        <div className="flex justify-between items-center mt-2 text-xs">
+                          <span className="text-[#38e07b] font-mono">New Project</span>
+                          <span className="text-gray-500">Click to view</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Active Item */}
+                <div 
+                  onClick={() => handleProjectSelect(projects[0])}
+                  className="p-4 border-b border-[#29382f]/50 hover:bg-[#29382f]/30 cursor-pointer transition-colors bg-[#29382f]/20 border-l-4 border-l-[#38e07b]"
                 >
                   <div className="flex justify-between items-start mb-1">
-                    <h3 className="font-bold text-white text-base">{project.name}</h3>
-                    <Badge variant={project.status === 'verified' ? 'verified' : 'pending'}>
-                      {project.status === 'verified' ? '✓ VERIFIED' : '⏳ IN-PROGRESS'}
-                    </Badge>
+                    <h3 className="font-bold text-white text-base">Third Mainland Bridge Repair</h3>
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-[#38e07b] bg-[#38e07b]/10 px-2 py-0.5 rounded-full border border-[#38e07b]/20">
+                      <span className="material-symbols-outlined text-[12px]">verified</span> VERIFIED
+                    </span>
                   </div>
-                  <p className="text-xs text-text-secondary mb-3">
-                    Project ID: #{project.id} • {project.location}
-                  </p>
+                  <p className="text-xs text-gray-400 mb-3">Project ID: #NG-2024-882 • Lagos Island</p>
                   <div className="flex justify-between items-center text-xs">
                     <div className="flex flex-col">
-                      <span className="text-text-secondary uppercase text-xs font-bold">Budget</span>
-                      <span className="text-white font-mono">{project.totalBudget} ETH</span>
+                      <span className="text-gray-500 uppercase text-[10px] font-bold">Budget</span>
+                      <span className="text-white font-mono">500 ETH</span>
                     </div>
                     <div className="text-right flex flex-col items-end">
-                      <span className="text-text-secondary uppercase text-xs font-bold">
-                        {project.status === 'verified' ? 'AI Confidence' : 'Progress'}
-                      </span>
-                      <span className="text-primary font-bold">
-                        {project.status === 'verified' ? `${project.aiConfidence}%` : `${project.progress}%`}
-                      </span>
+                      <span className="text-gray-500 uppercase text-[10px] font-bold">AI Confidence</span>
+                      <span className="text-[#38e07b] font-bold">98.5%</span>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </aside>
-        </div>
-      </div>
-
-      {/* Evidence Vault Modal */}
-      <Modal
-        isOpen={!!selectedProject}
-        onClose={() => setSelectedProject(null)}
-        size="lg"
-        className="animate-in fade-in-0 zoom-in-95 duration-500"
-      >
-        {selectedProject && (
-          <div className="flex flex-col gap-6">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary border border-primary/20">
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-                </svg>
+                
+                {/* Other Items */}
+                <div 
+                  onClick={() => handleProjectSelect(projects[1])}
+                  className="p-4 border-b border-[#29382f]/50 hover:bg-[#29382f]/30 cursor-pointer transition-colors border-l-4 border-l-transparent hover:border-l-yellow-400"
+                >
+                  <div className="flex justify-between items-start mb-1">
+                    <h3 className="font-medium text-gray-200 text-base">Abuja-Kaduna Expressway</h3>
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full border border-yellow-400/20">
+                      <span className="material-symbols-outlined text-[12px]">engineering</span> IN-PROGRESS
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-3">Project ID: #NG-2024-421 • FCT Abuja</p>
+                  <div className="flex justify-between items-center text-xs">
+                    <div className="flex flex-col">
+                      <span className="text-gray-500 uppercase text-[10px] font-bold">Budget</span>
+                      <span className="text-gray-300 font-mono">1,200 ETH</span>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                      <span className="text-gray-500 uppercase text-[10px] font-bold">Progress</span>
+                      <span className="text-yellow-400 font-bold">45%</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div 
+                  onClick={() => handleProjectSelect(projects[2])}
+                  className="p-4 border-b border-[#29382f]/50 hover:bg-[#29382f]/30 cursor-pointer transition-colors border-l-4 border-l-transparent hover:border-l-red-500"
+                >
+                  <div className="flex justify-between items-start mb-1">
+                    <h3 className="font-medium text-gray-200 text-base">Lagos Blue Line Rail</h3>
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full border border-red-400/20">
+                      <span className="material-symbols-outlined text-[12px]">hourglass_empty</span> PENDING
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-3">Project ID: #NG-2024-990 • Victoria Island</p>
+                  <div className="flex justify-between items-center text-xs">
+                    <div className="flex flex-col">
+                      <span className="text-gray-500 uppercase text-[10px] font-bold">Budget</span>
+                      <span className="text-gray-300 font-mono">3,500 ETH</span>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                      <span className="text-gray-500 uppercase text-[10px] font-bold">Votes</span>
+                      <span className="text-gray-300 font-bold">82/100</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div 
+                  onClick={() => handleProjectSelect(projects[3])}
+                  className="p-4 border-b border-[#29382f]/50 hover:bg-[#29382f]/30 cursor-pointer transition-colors border-l-4 border-l-transparent hover:border-l-[#38e07b]"
+                >
+                  <div className="flex justify-between items-start mb-1">
+                    <h3 className="font-medium text-gray-200 text-base">Port Harcourt Refinery</h3>
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-[#38e07b] bg-[#38e07b]/10 px-2 py-0.5 rounded-full border border-[#38e07b]/20">
+                      <span className="material-symbols-outlined text-[12px]">verified</span> VERIFIED
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-3">Project ID: #NG-2023-112 • Rivers State</p>
+                  <div className="flex justify-between items-center text-xs">
+                    <div className="flex flex-col">
+                      <span className="text-gray-500 uppercase text-[10px] font-bold">Budget</span>
+                      <span className="text-gray-300 font-mono">800 ETH</span>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                      <span className="text-gray-500 uppercase text-[10px] font-bold">AI Confidence</span>
+                      <span className="text-[#38e07b] font-bold">99.1%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+            
+            {/* Center Content - Interactive Map */}
+            <main className="flex-1 relative pointer-events-auto">
+              <LeafletMap 
+                projects={projects}
+                selectedProject={selectedProject}
+                onProjectSelect={setSelectedProject}
+                center={selectedProject?.place ? [selectedProject.place.location.latitude, selectedProject.place.location.longitude] : [9.0765, 7.3986]}
+                zoom={selectedProject?.place ? 12 : 6}
+              />
+            </main>
+          </div>
+          
+          {/* Evidence Vault Section */}
+          <section className="bg-[#1c2620]/90 backdrop-blur-xl rounded-2xl border border-[#29382f] shadow-2xl p-6 mt-8">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="size-12 rounded-xl bg-[#38e07b]/20 flex items-center justify-center text-[#38e07b] border border-[#38e07b]/20">
+                <span className="material-symbols-outlined text-3xl">verified_user</span>
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">Evidence Vault</h2>
-                <p className="text-sm text-primary flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-                  </svg>
-                  {selectedProject.name}
+                <p className="text-sm text-[#38e07b] flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">lock</span>
+                  {selectedProject?.name || 'Third Mainland Bridge Repair'}
                 </p>
               </div>
             </div>
-
-            {/* Video Feed */}
-            <div className="rounded-xl overflow-hidden bg-black border border-border-dark relative group">
-              <div className="aspect-video w-full bg-border-dark/50 relative">
-                <div 
-                  className="w-full h-full bg-cover bg-center opacity-60"
-                  style={{
-                    backgroundImage: "url('https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800&h=450&fit=crop')"
-                  }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <button className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-primary hover:text-background-dark hover:border-primary transition-all group-hover:scale-110">
-                    <span className="text-4xl ml-1">▶</span>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Video Feed Section */}
+              <div className="rounded-xl overflow-hidden bg-black border border-[#29382f] relative group">
+                <div className="aspect-video w-full bg-[#29382f]/50 relative">
+                  <img 
+                    className="w-full h-full object-cover opacity-60" 
+                    alt="Drone view of bridge construction site showing rebar and concrete structures" 
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuABhw3txAHFd0HVhrYF_2N14pEl7J9CxUvKEILC3OJ50HV6EUeLg9q4nCkImNDr_tepgEd0HRcBqERub5DBjPRAYrR8C0h4UTdfT0_9FuTPc677akKwI29SNq0LY3upJ34S7-dGJvfGVvQ1pGi0yNAbslwTq4oF882f7aUjShpUF2pXiuYnuQub6LLddNmo-01lT19Z5Wh8Vcgy3WZEjHmVNeJB8Y-hxnA04-EjwAShot8ICbylbpPGo7UD-VhnHeg1MhK6cG984TQ"
+                  />
+                  
+                  {/* Video UI Overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <button className="size-16 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-[#38e07b] hover:text-[#122017] hover:border-[#38e07b] transition-all group-hover:scale-110">
+                      <span className="material-symbols-outlined text-4xl ml-1">play_arrow</span>
+                    </button>
+                  </div>
+                  
+                  {/* AI Overlay Tags */}
+                  <div className="absolute top-4 left-4 flex gap-2">
+                    <span className="bg-black/70 text-white text-[10px] font-mono px-2 py-1 rounded border border-white/20 flex items-center gap-1">
+                      <span className="size-1.5 bg-red-500 rounded-full animate-pulse" /> LIVE FEED
+                    </span>
+                  </div>
+                  
+                  <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
+                    <div className="bg-black/70 backdrop-blur-md p-3 rounded-lg border border-white/10 max-w-sm">
+                      <p className="text-[10px] text-[#38e07b] uppercase font-bold mb-1 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">smart_toy</span> Gemini 2.5 Flash Analysis
+                      </p>
+                      <p className="text-xs text-white leading-relaxed">
+                        Visual confirmation of structural integrity. Rebar density matches schematic V.2. Concrete pouring volume verified at 98% accuracy.
+                      </p>
+                    </div>
+                    <div className="bg-[#38e07b]/90 text-[#122017] font-bold px-3 py-1.5 rounded-lg text-xs shadow-lg shadow-[#38e07b]/20">
+                      98% Confidence
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Transaction Data */}
+              <div className="flex flex-col gap-4">
+                <div className="bg-[#122017] rounded-xl p-4 border border-[#29382f]">
+                  <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Last Transaction Hash</p>
+                  <div className="flex items-center gap-2 text-white font-mono text-sm">
+                    <span className="truncate">0x71C...9A23</span>
+                    <button className="text-gray-400 hover:text-white">
+                      <span className="material-symbols-outlined text-sm">content_copy</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-[#122017] rounded-xl p-4 border border-[#29382f]">
+                  <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Funds Released</p>
+                  <div className="flex items-center gap-2 text-white font-mono text-sm">
+                    <span>50.00 ETH</span>
+                    <span className="text-xs text-gray-500">(Milestone 3)</span>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button className="px-5 py-2.5 rounded-full border border-[#29382f] text-white text-sm font-medium hover:bg-[#29382f] transition-colors">
+                    View Smart Contract
                   </button>
                 </div>
-
-                {/* AI Overlay */}
-                <div className="absolute top-4 left-4 flex gap-2">
-                  <span className="bg-black/70 text-white text-xs font-mono px-2 py-1 rounded border border-white/20 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                    LIVE FEED
-                  </span>
-                </div>
-                <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-                  <div className="bg-black/70 backdrop-blur-md p-3 rounded-lg border border-white/10 max-w-sm">
-                    <p className="text-xs text-primary uppercase font-bold mb-1 flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20.5 6c-2.61.7-5.67 1-8.5 1s-5.89-.3-8.5-1L3 8c2.61.7 5.67 1 8.5 1s5.89-.3 8.5-1l.5-2zM12 10c-2.21 0-4.43-.18-6.49-.49L5.5 12c2.61.7 5.67 1 8.5 1s5.89-.3 8.5-1l-.01-2.49C20.43 9.82 18.21 10 12 10z"/>
-                      </svg> Gemini 2.5 Flash Analysis
-                    </p>
-                    <p className="text-xs text-white leading-relaxed">
-                      Visual confirmation of structural integrity. Rebar density matches schematic V.2. 
-                      Concrete pouring volume verified at 98% accuracy.
-                    </p>
-                  </div>
-                  <div className="bg-primary/90 text-background-dark font-bold px-3 py-1.5 rounded-lg text-xs shadow-lg shadow-primary/20">
-                    {selectedProject.aiConfidence}% Confidence
-                  </div>
-                </div>
               </div>
             </div>
-
-            {/* Transaction Data */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-background-dark rounded-xl p-4 border border-border-dark">
-                <p className="text-xs text-text-secondary uppercase font-bold mb-1">Last Transaction Hash</p>
-                <div className="flex items-center gap-2 text-white font-mono text-sm">
-                  <span className="truncate">{selectedProject.contractAddress}</span>
-                  <button className="text-text-secondary hover:text-white">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              <div className="bg-background-dark rounded-xl p-4 border border-border-dark">
-                <p className="text-xs text-text-secondary uppercase font-bold mb-1">Funds Released</p>
-                <div className="flex items-center gap-2 text-white font-mono text-sm">
-                  <span>{selectedProject.ethReleased}.00 ETH</span>
-                  <span className="text-xs text-text-secondary">(Milestone 3)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-2 border-t border-border-dark">
-              <Button variant="secondary">View Smart Contract</Button>
-              <Button className="shadow-primary">Release Next Batch</Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* Map Controls */}
-      <div className="absolute bottom-8 right-8 z-20 flex flex-col gap-2 pointer-events-auto">
-        <Button variant="secondary" size="sm" className="w-10 h-10 rounded-full">+</Button>
-        <Button variant="secondary" size="sm" className="w-10 h-10 rounded-full">-</Button>
-        <Button className="w-10 h-10 rounded-full mt-2 shadow-primary">
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-          </svg>
-        </Button>
+          </section>
+        </div>
       </div>
+      
+
     </div>
   );
 };

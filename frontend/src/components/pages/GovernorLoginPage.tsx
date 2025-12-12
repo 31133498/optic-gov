@@ -1,9 +1,23 @@
 import { motion } from 'framer-motion';
-import { LoginForm } from '@/components/forms/LoginForm';
 import { Icon } from '@/components/ui/Icon';
+import { Button } from '@/components/ui/Button';
 import { TypewriterText } from '@/components/ui/TypewriterText';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-export const LoginPage = () => {
+export const GovernorLoginPage = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogin = () => {
+    setIsConnecting(true);
+    setTimeout(() => {
+      navigate('/governor');
+    }, 2000);
+  };
+
   return (
     <div className="bg-[#102216] min-h-screen flex flex-col font-display">
       {/* Header */}
@@ -27,21 +41,7 @@ export const LoginPage = () => {
                 scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
               }}
             >
-              <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                <g clipPath="url(#clip0_6_330)">
-                  <path 
-                    clipRule="evenodd" 
-                    d="M24 0.757355L47.2426 24L24 47.2426L0.757355 24L24 0.757355ZM21 35.7574V12.2426L9.24264 24L21 35.7574Z" 
-                    fill="currentColor" 
-                    fillRule="evenodd"
-                  />
-                </g>
-                <defs>
-                  <clipPath id="clip0_6_330">
-                    <rect fill="white" height="48" width="48" />
-                  </clipPath>
-                </defs>
-              </svg>
+              <Icon name="policy" />
             </motion.div>
             <motion.h1 
               className="text-white text-xl font-bold tracking-tight"
@@ -128,21 +128,21 @@ export const LoginPage = () => {
                   animate={{ opacity: [0.7, 1, 0.7] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  Secure Infrastructure Verification
+                  Governor Access Portal
                 </motion.span>
               </motion.div>
               
               <h2 className="text-white text-4xl lg:text-5xl font-black leading-tight tracking-[-0.033em] mb-4">
-                <TypewriterText text="Building Trust" speed={100} />
+                <TypewriterText text="Govern with" speed={100} />
                 <br />
                 <span className="text-[#9cbaa6]">
-                  <TypewriterText text="Block by Block" delay={1500} speed={120} />
+                  <TypewriterText text="Transparency" delay={1500} speed={120} />
                 </span>
               </h2>
               
               <p className="text-[#9cbaa6] text-lg font-normal leading-relaxed max-w-sm">
                 <TypewriterText 
-                  text="Prevent corruption in public projects with immutable audit trails powered by Ethereum Smart Contracts."
+                  text="Access your governor dashboard to create projects, manage contracts, and oversee public infrastructure with blockchain accountability."
                   delay={3000}
                   speed={40}
                 />
@@ -157,9 +157,9 @@ export const LoginPage = () => {
               whileHover={{ scale: 1.02 }}
             >
               <motion.img 
-                alt="Abstract digital blockchain network nodes glowing green"
+                alt="Government building with blockchain overlay"
                 className="object-cover w-full h-full opacity-60 mix-blend-overlay"
-                src="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=600&h=400&fit=crop&q=80"
+                src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&h=400&fit=crop&q=80"
                 animate={{ 
                   scale: [1, 1.05, 1],
                   opacity: [0.6, 0.8, 0.6]
@@ -185,16 +185,93 @@ export const LoginPage = () => {
                   animate={{ rotate: [0, 360] }}
                   transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                 >
-                  <Icon name="verified_user" size="sm" />
+                  <Icon name="account_balance" size="sm" />
                 </motion.div>
-                Secured by Gemini AI & Ethereum
+                Secured Governor Portal
               </motion.div>
             </motion.div>
           </div>
 
           {/* Right Side: Login Form */}
           <div className="w-full lg:w-1/2 p-8 lg:p-14 flex flex-col justify-center bg-[#1b271f]">
-            <LoginForm />
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <div className="mb-8">
+                <h3 className="text-white text-2xl font-bold mb-2">Governor Sign In</h3>
+                <p className="text-[#9cbaa6] text-sm">Access your governance dashboard</p>
+              </div>
+
+              <div className="space-y-6">
+                {/* Email Field */}
+                <div>
+                  <label className="block text-white text-sm font-medium mb-2">
+                    Official Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-[#29382f] border border-[#29382f] rounded-xl px-4 py-3 text-white placeholder-[#9cbaa6] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    placeholder="governor@state.gov"
+                  />
+                </div>
+
+                {/* Password Field */}
+                <div>
+                  <label className="block text-white text-sm font-medium mb-2">
+                    Secure Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-[#29382f] border border-[#29382f] rounded-xl px-4 py-3 text-white placeholder-[#9cbaa6] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                {/* Wallet Connection */}
+                <div className="border border-[#28392e] rounded-xl p-4 bg-[#141f18]">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-white text-sm font-medium">Wallet Authentication</span>
+                    <span className="text-xs text-[#9cbaa6] bg-[#29382f] px-2 py-1 rounded">Required</span>
+                  </div>
+                  <Button
+                    onClick={() => setIsConnecting(!isConnecting)}
+                    className="w-full bg-[#29382f] hover:bg-[#35463b] text-white border border-[#35463b] hover:border-primary/30"
+                    loading={isConnecting}
+                  >
+                    <Icon name="account_balance_wallet" size="sm" className="mr-2" />
+                    {isConnecting ? 'Connecting...' : 'Connect Governor Wallet'}
+                  </Button>
+                </div>
+
+                {/* Login Button */}
+                <Button
+                  onClick={handleLogin}
+                  className="w-full bg-primary hover:bg-[#2bc466] text-[#111714] font-bold py-3 shadow-[0_4px_14px_0_rgba(56,224,123,0.39)]"
+                  disabled={!email || !password}
+                >
+                  Access Governor Dashboard
+                </Button>
+
+                {/* Links */}
+                <div className="flex flex-col gap-2 text-center text-sm">
+                  <a href="#" className="text-[#9cbaa6] hover:text-primary transition-colors">
+                    Forgot your password?
+                  </a>
+                  <div className="text-[#9cbaa6]">
+                    Need governor access? {' '}
+                    <a href="/register" className="text-primary hover:underline font-medium">
+                      Request Registration
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </motion.div>
       </main>

@@ -1,11 +1,9 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { RadioGroup } from '@/components/ui/RadioGroup';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Icon } from '@/components/ui/Icon';
-import { UserTypeSelector } from '@/components/ui/UserTypeSelector';
 import { useForm } from '@/hooks/useForm';
 import { usePasswordToggle } from '@/hooks/usePasswordToggle';
 
@@ -17,16 +15,12 @@ const roleOptions = [
 export const RegistrationForm = () => {
   const { data, errors, isLoading, updateField, submit } = useForm();
   const passwordToggle = usePasswordToggle();
-  const [userType, setUserType] = useState<'governor' | 'contractor'>('contractor');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Update form data with selected user type
-    updateField('role', userType === 'governor' ? 'Governor' : 'Contractor');
     const success = await submit();
     if (success) {
-      // Route based on selected user type
-      window.location.href = userType === 'governor' ? '/governor' : '/contractor';
+      console.log('Registration successful!');
     }
   };
 
@@ -38,13 +32,13 @@ export const RegistrationForm = () => {
       transition={{ duration: 0.5 }}
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <div>
-          <label className="block text-white text-sm font-medium mb-3">I am registering as a</label>
-          <UserTypeSelector 
-            userType={userType} 
-            onChange={setUserType}
-          />
-        </div>
+        <RadioGroup
+          label="I am registering as a"
+          options={roleOptions}
+          value={data.role}
+          onChange={(value) => updateField('role', value)}
+          name="role"
+        />
 
         <Input
           id="fullName"
@@ -61,7 +55,7 @@ export const RegistrationForm = () => {
           label="Email Address"
           type="email"
           icon="mail"
-          placeholder={userType === 'governor' ? 'governor@city.gov' : 'contractor@company.com'}
+          placeholder="name@organization.gov"
           value={data.email}
           onChange={(e) => updateField('email', e.target.value)}
           error={errors.email}
@@ -131,7 +125,10 @@ export const RegistrationForm = () => {
       <div className="mt-8 pt-6 border-t border-[#28392e] text-center">
         <p className="text-sm text-text-secondary">
           Already have an account?{' '}
-          <a href="/login" className="font-bold text-white hover:text-primary transition-colors">
+          <a 
+            href={data.role === 'Governor' ? '/governor/login' : data.role === 'Contractor' ? '/contractor' : '/login'} 
+            className="font-bold text-white hover:text-primary transition-colors"
+          >
             Log In
           </a>
         </p>

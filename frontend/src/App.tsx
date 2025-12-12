@@ -8,12 +8,14 @@ import { HowItWorksSection } from '@/components/sections/HowItWorksSection';
 import { RegisterPage } from '@/components/pages/RegisterPage';
 import { LoginPage } from '@/components/pages/LoginPage';
 import { DashboardPage } from '@/components/pages/DashboardPage';
-import { OpticGovDemo } from './components/pages/OpticGovDemo';
-import { TransparencyMapPage } from './components/pages/TransparencyMapPage';
-import { ProjectDetailsPage } from './components/pages/ProjectDetailsPage';
-import { GovernorDashboardPage } from './components/pages/GovernorDashboardPage';
-import { ContractorPortalPage } from './components/pages/ContractorPortalPage';
-import { CreateProjectPage } from './components/pages/CreateProjectPage';
+import { TransparencyMapPage } from '@/components/pages/TransparencyMapPage';
+import { ProjectDetailsPage } from '@/components/pages/ProjectDetailsPage';
+import { GovernorDashboardPage } from '@/components/pages/GovernorDashboardPage';
+import { GovernorLoginPage } from '@/components/pages/GovernorLoginPage';
+import { GovernorMapDashboard } from '@/components/pages/GovernorMapDashboard';
+import { ContractorDashboard } from '@/components/pages/ContractorDashboard';
+import { MilestoneSubmission } from '@/components/pages/MilestoneSubmission';
+import { ContractorProjectView } from '@/components/pages/ContractorProjectView';
 
 const HomePage = () => (
   <div className="relative flex h-auto min-h-screen w-full flex-col">
@@ -36,12 +38,14 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/demo" element={<OpticGovDemo />} />
         <Route path="/transparency-map" element={<TransparencyMapPage />} />
-        <Route path="/project/:id" element={<ProjectDetailsPage />} />
+        <Route path="/project/:projectId" element={<ProjectDetailsPage />} />
         <Route path="/governor" element={<GovernorDashboardPage />} />
-        <Route path="/contractor" element={<ContractorPortalPage />} />
-        <Route path="/create-project" element={<CreateProjectPage />} />
+        <Route path="/governor/login" element={<GovernorLoginPage />} />
+        <Route path="/governor/dashboard" element={<GovernorMapDashboard />} />
+        <Route path="/contractor" element={<ContractorDashboard />} />
+        <Route path="/contractor/milestone/:milestoneId" element={<MilestoneSubmission />} />
+        <Route path="/contractor/project/:projectId" element={<ContractorProjectView />} />
       </Routes>
     </Router>
   );

@@ -73,6 +73,12 @@ export const DashboardPage = () => {
               <span className="absolute top-2 right-2.5 size-2.5 bg-red-500 rounded-full border-2 border-[#1c2620]" />
             </motion.button>
             
+            <a href="/transparency-map" className="mr-3">
+              <Button variant="secondary" className="h-11 px-4 rounded-full border-[#29382f] text-white hover:bg-[#29382f]">
+                <Icon name="map" size="sm" className="mr-2" />
+                Map
+              </Button>
+            </a>
             <Button
               className="h-11 px-6 rounded-full bg-primary hover:bg-green-400 text-[#122017] font-bold text-sm tracking-wide shadow-[0_0_20px_rgba(56,224,123,0.3)]"
             >

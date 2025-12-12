@@ -137,6 +137,25 @@ export const HowItWorksSection = () => {
             </div>
           ))}
         </div>
+
+        {/* Call to Action */}
+        <div className="mt-16 text-center">
+          <div className="bg-card-dark border border-border-dark rounded-xl p-8">
+            <h3 className="text-white text-xl font-bold mb-3">
+              See It In Action
+            </h3>
+            <p className="text-text-secondary mb-6 max-w-md mx-auto">
+              Explore our public transparency map to see real-time project verification and progress tracking.
+            </p>
+            <button 
+              onClick={() => window.open('/transparency-map', '_self')}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-black font-medium rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Icon name="map" size="sm" />
+              View Public Transparency Map
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );

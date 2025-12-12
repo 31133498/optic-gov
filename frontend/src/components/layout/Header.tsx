@@ -5,6 +5,7 @@ import { useWallet } from '@/hooks/useWallet';
 const navigation = [
   { name: 'How it Works', href: '#how-it-works' },
   { name: 'Features', href: '#features' },
+  { name: 'Transparency Map', href: '/transparency-map' },
   { name: 'Docs', href: '#docs' },
 ];
 
@@ -38,13 +39,23 @@ export const Header = () => {
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-8">
             {navigation.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                className="text-gray-300 hover:text-white text-sm font-medium transition-colors focus:outline-none focus:text-white"
-              >
-                {item.name}
-              </a>
+              item.href.startsWith('/') ? (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors focus:outline-none focus:text-white"
+                >
+                  {item.name}
+                </a>
+              ) : (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors focus:outline-none focus:text-white"
+                >
+                  {item.name}
+                </a>
+              )
             ))}
           </nav>
 

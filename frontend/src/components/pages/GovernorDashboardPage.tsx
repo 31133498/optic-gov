@@ -1,338 +1,396 @@
 import { useState } from 'react';
-import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
-import { ProgressBar } from '../ui/ProgressBar';
-import { MapPin } from '../ui/MapPin';
-import { Project } from '../../types/project';
-
-// Mock data
-const mockProjects: Project[] = [
-  {
-    id: 'central-highway',
-    name: 'Central Highway Repair',
-    description: 'Major highway infrastructure repair',
-    location: 'Sector 7',
-    contractAddress: '0x8821',
-    totalBudget: 2500000,
-    ethLocked: 100,
-    ethReleased: 75,
-    status: 'verified',
-    progress: 75,
-    aiConfidence: 98.2,
-    contractor: {
-      name: 'Highway Solutions Inc.',
-      address: '0x123...456',
-      trustScore: 95,
-      completedProjects: 12,
-    },
-    milestones: [],
-    evidence: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'district-9-water',
-    name: 'District 9 Water Supply',
-    description: 'Water infrastructure upgrade',
-    location: 'North Zone',
-    contractAddress: '0x9923',
-    totalBudget: 1800000,
-    ethLocked: 80,
-    ethReleased: 32,
-    status: 'alert',
-    progress: 40,
-    contractor: {
-      name: 'AquaTech Systems',
-      address: '0x789...012',
-      trustScore: 88,
-      completedProjects: 8,
-    },
-    milestones: [],
-    evidence: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'city-bridge-alpha',
-    name: 'City Bridge Alpha',
-    description: 'Bridge construction project',
-    location: 'Downtown',
-    contractAddress: '0x1029',
-    totalBudget: 3200000,
-    ethLocked: 150,
-    ethReleased: 22.5,
-    status: 'pending',
-    progress: 15,
-    contractor: {
-      name: 'Bridge Masters LLC',
-      address: '0x345...678',
-      trustScore: 92,
-      completedProjects: 6,
-    },
-    milestones: [],
-    evidence: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
-
-const mapPins = [
-  { id: '1', projectId: 'central-highway', position: { top: '40%', left: '45%' }, status: 'verified' as const },
-  { id: '2', projectId: 'district-9-water', position: { top: '30%', left: '60%' }, status: 'alert' as const },
-  { id: '3', projectId: 'city-bridge-alpha', position: { top: '65%', left: '35%' }, status: 'pending' as const },
-];
+import { motion } from 'framer-motion';
+import { Icon } from '@/components/ui/Icon';
+import { Button } from '@/components/ui/Button';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 export const GovernorDashboardPage = () => {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [projectName, setProjectName] = useState('');
+  const [contractorAddress, setContractorAddress] = useState('');
+  const [budget, setBudget] = useState('');
+  const [milestoneDescription, setMilestoneDescription] = useState('');
+  const [isNavigating, setIsNavigating] = useState(false);
 
-  const handlePinClick = (pinId: string) => {
-    const pin = mapPins.find(p => p.id === pinId);
-    if (pin) {
-      const project = mockProjects.find(p => p.id === pin.projectId);
-      if (project) {
-        setSelectedProject(project);
-      }
-    }
-  };
-
-  const filteredProjects = mockProjects.filter(project =>
-    project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    project.contractAddress.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  if (isNavigating) {
+    return <LoadingScreen message="Loading Governor Dashboard..." />;
+  }
 
   return (
-    <div className="min-h-screen bg-background-dark text-white flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="flex items-center justify-between border-b border-border-dark bg-background-dark px-6 py-3 shrink-0 z-20 shadow-md">
-        <div className="flex items-center gap-4">
-          <div className="w-8 h-8 text-primary flex items-center justify-center bg-primary/10 rounded-lg">
-            <span>🏛️</span>
-          </div>
-          <h1 className="text-white text-xl font-bold tracking-tight">
-            Optic-Gov <span className="text-xs font-normal text-text-secondary ml-2 border border-border-dark px-2 py-0.5 rounded-full">Governor View</span>
-          </h1>
-        </div>
-        <div className="flex items-center gap-4">
-          {/* Blockchain Status */}
-          <div className="hidden md:flex items-center gap-2 text-xs font-mono text-text-secondary bg-card-dark px-3 py-1.5 rounded-full border border-border-dark">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            Ethereum Mainnet: Block #19244291
-          </div>
-          {/* Actions */}
-          <div className="flex gap-3">
-            <Button variant="secondary" size="sm" className="flex items-center gap-2">
-              <span>💰</span>
-              <span>0x71C...9A2</span>
-            </Button>
-            <Button variant="ghost" size="sm" className="w-9 h-9 rounded-lg relative">
-              🔔
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background-dark" />
-            </Button>
-            <Button variant="ghost" size="sm" className="w-9 h-9 rounded-lg">
-              ⚙️
-            </Button>
-            <div className="w-9 h-9 rounded-full bg-cover bg-center border border-border-dark cursor-pointer ml-2"
-                 style={{ backgroundImage: "url('https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=36&h=36&fit=crop&crop=face')" }} />
-          </div>
-        </div>
-      </header>
-
-      {/* Main Dashboard */}
-      <div className="flex flex-1 overflow-hidden relative">
-        {/* Map Panel */}
-        <main className="flex-1 relative bg-background-dark">
-          {/* Map Background */}
-          <div className="absolute inset-0 w-full h-full opacity-80"
-               style={{
-                 backgroundImage: "url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1920&h=1080&fit=crop')",
-                 filter: 'grayscale(100%) contrast(120%) brightness(50%)'
-               }} />
-          
-          {/* Map Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background-dark/80 via-transparent to-background-dark/40 pointer-events-none" />
-
-          {/* Map Controls */}
-          <div className="absolute top-6 left-6 flex flex-col gap-2">
-            <div className="bg-card-dark/90 backdrop-blur border border-border-dark p-1 rounded-lg flex flex-col shadow-xl">
-              <Button variant="ghost" size="sm" className="w-8 h-8 rounded">+</Button>
-              <Button variant="ghost" size="sm" className="w-8 h-8 rounded">-</Button>
+    <div className="bg-[#111714] text-white overflow-hidden h-screen flex font-display">
+      {/* Sidebar Navigation */}
+      <motion.aside 
+        className="w-72 bg-[#111714] border-r border-[#29382f] flex-col justify-between hidden lg:flex p-6"
+        initial={{ x: -300 }}
+        animate={{ x: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="flex flex-col gap-8">
+          {/* App Logo/Title */}
+          <motion.div 
+            className="flex gap-3 items-center"
+            whileHover={{ scale: 1.05 }}
+          >
+            <div className="bg-center bg-no-repeat bg-cover rounded-full size-12 bg-[#29382f] flex items-center justify-center text-[#38e07b] relative overflow-hidden">
+              <div className="absolute inset-0 bg-[#38e07b]/20" />
+              <Icon name="policy" className="text-3xl" />
             </div>
-            <div className="bg-card-dark/90 backdrop-blur border border-border-dark p-2 rounded-lg shadow-xl">
-              <Button variant="ghost" size="sm" className="w-8 h-8 rounded text-primary">📍</Button>
+            <div className="flex flex-col">
+              <h1 className="text-white text-xl font-bold leading-none tracking-tight">Optic-Gov</h1>
+              <p className="text-[#9eb7a8] text-xs font-medium uppercase tracking-wider mt-1">Governor Portal</p>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Map Legend */}
-          <div className="absolute bottom-6 left-6 bg-card-dark/90 backdrop-blur border border-border-dark p-3 rounded-lg shadow-xl text-xs text-white">
-            <div className="font-bold mb-2 text-text-secondary uppercase tracking-wider">Project Status</div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-              Verified & Active
-            </div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full bg-yellow-400" />
-              Pending Verification
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-red-500" />
-              Alert / Stalled
-            </div>
-          </div>
-
-          {/* Map Pins */}
-          {mapPins.map((pin) => {
-            const project = mockProjects.find(p => p.id === pin.projectId);
-            return (
-              <MapPin
-                key={pin.id}
-                status={pin.status}
-                position={{ top: pin.position.top, left: pin.position.left }}
-                onClick={() => handlePinClick(pin.id)}
-                tooltip={
-                  project && (
-                    <div>
-                      <div className="text-white font-bold text-sm">{project.name}</div>
-                      <div className={`text-xs mt-1 flex items-center gap-1 ${
-                        project.status === 'verified' ? 'text-primary' :
-                        project.status === 'alert' ? 'text-red-400' :
-                        'text-yellow-400'
-                      }`}>
-                        <span>{project.status === 'verified' ? '✓' : project.status === 'alert' ? '⚠️' : '⏳'}</span>
-                        {project.status === 'verified' ? 'On Track' :
-                         project.status === 'alert' ? 'Budget Mismatch' :
-                         'Pending'}
-                      </div>
-                    </div>
-                  )
-                }
-              />
-            );
-          })}
-        </main>
-
-        {/* Right Sidebar */}
-        <aside className="w-[400px] flex flex-col bg-background-dark border-l border-border-dark z-10 shadow-2xl">
-          {/* Header Section */}
-          <div className="p-6 border-b border-border-dark bg-background-dark">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-white text-lg font-bold">Dashboard Control</h2>
-              <span className="text-xs text-text-secondary">Updated 2m ago</span>
-            </div>
-
-            {/* Primary Action */}
-            <Button 
-              className="w-full h-12 shadow-primary mb-6"
-              onClick={() => window.location.href = '/create-project'}
+          {/* Navigation Links */}
+          <nav className="flex flex-col gap-2">
+            <motion.a 
+              className="flex items-center gap-3 px-4 py-3 rounded-full bg-[#29382f] text-white transition-colors"
+              href="#"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <span>➕</span>
-              Create New Project
-            </Button>
+              <Icon name="add_circle" />
+              <span className="text-sm font-bold">Create Project</span>
+            </motion.a>
+            <motion.button 
+              className="flex items-center gap-3 px-4 py-3 text-[#9eb7a8] hover:text-white hover:bg-[#29382f]/50 rounded-full transition-colors w-full text-left"
+              onClick={() => {
+                setIsNavigating(true);
+                setTimeout(() => {
+                  window.location.href = '/governor/dashboard';
+                }, 1500);
+              }}
+              whileHover={{ scale: 1.02 }}
+            >
+              <Icon name="dashboard" />
+              <span className="text-sm font-medium">Dashboard</span>
+            </motion.button>
+            <motion.a 
+              className="flex items-center gap-3 px-4 py-3 text-[#9eb7a8] hover:text-white hover:bg-[#29382f]/50 rounded-full transition-colors"
+              href="#"
+              whileHover={{ scale: 1.02 }}
+            >
+              <Icon name="folder_open" />
+              <span className="text-sm font-medium">Active Projects</span>
+            </motion.a>
+            <motion.a 
+              className="flex items-center gap-3 px-4 py-3 text-[#9eb7a8] hover:text-white hover:bg-[#29382f]/50 rounded-full transition-colors"
+              href="#"
+              whileHover={{ scale: 1.02 }}
+            >
+              <Icon name="history" />
+              <span className="text-sm font-medium">History</span>
+            </motion.a>
+          </nav>
+        </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-card-dark p-3 rounded-lg border border-border-dark">
-                <p className="text-text-secondary text-xs font-medium uppercase mb-1">Total Projects</p>
-                <p className="text-white text-xl font-bold">12</p>
-              </div>
-              <div className="bg-card-dark p-3 rounded-lg border border-border-dark">
-                <p className="text-text-secondary text-xs font-medium uppercase mb-1">Deployed</p>
-                <p className="text-white text-xl font-bold">$4.5M</p>
-              </div>
-              <div className="bg-card-dark p-3 rounded-lg border border-border-dark">
-                <p className="text-text-secondary text-xs font-medium uppercase mb-1">Verify Pending</p>
-                <p className="text-yellow-400 text-xl font-bold">3</p>
-              </div>
-              <div className="bg-card-dark p-3 rounded-lg border border-border-dark">
-                <p className="text-text-secondary text-xs font-medium uppercase mb-1">Active Alerts</p>
-                <p className="text-red-400 text-xl font-bold">2</p>
+        {/* Bottom Actions */}
+        <div className="flex flex-col gap-4">
+          <motion.div 
+            className="p-4 rounded-xl bg-gradient-to-br from-[#29382f] to-transparent border border-[#29382f]/50"
+            animate={{ 
+              boxShadow: ['0 0 0 rgba(56,224,123,0)', '0 0 20px rgba(56,224,123,0.1)', '0 0 0 rgba(56,224,123,0)']
+            }}
+            transition={{ duration: 3, repeat: Infinity }}
+          >
+            <div className="flex items-center gap-2 mb-2 text-[#38e07b]">
+              <Icon name="verified_user" size="sm" />
+              <span className="text-xs font-bold uppercase">Security Active</span>
+            </div>
+            <p className="text-[#9eb7a8] text-xs">Your session is secured via hardware enclave.</p>
+          </motion.div>
+          <motion.a 
+            className="flex items-center gap-3 px-4 py-3 text-[#9eb7a8] hover:text-white transition-colors"
+            href="#"
+            whileHover={{ scale: 1.02 }}
+          >
+            <Icon name="settings" />
+            <span className="text-sm font-medium">Settings</span>
+          </motion.a>
+        </div>
+      </motion.aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
+        {/* Top Header */}
+        <motion.header 
+          className="h-20 border-b border-[#29382f] flex items-center justify-between px-8 bg-[#111714]/80 backdrop-blur-md sticky top-0 z-10"
+          initial={{ y: -80 }}
+          animate={{ y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="flex items-center gap-4">
+            <button className="lg:hidden text-white">
+              <Icon name="menu" />
+            </button>
+            <div className="flex flex-col">
+              <h2 className="text-white text-lg font-bold">New Infrastructure Contract</h2>
+              <div className="flex items-center gap-2 text-[#9eb7a8] text-xs">
+                <motion.span 
+                  className="w-1.5 h-1.5 rounded-full bg-[#38e07b]"
+                  animate={{ opacity: [1, 0.3, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+                <span>Ethereum Mainnet</span>
               </div>
             </div>
           </div>
-
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {/* Search */}
-            <div className="relative mb-6">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-text-secondary">🔍</span>
-              <input
-                className="w-full bg-card-dark border border-border-dark text-white text-sm rounded-lg focus:ring-1 focus:ring-primary focus:border-primary block pl-10 p-3 placeholder-text-secondary"
-                placeholder="Search projects by ID or Name..."
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+          <div className="flex gap-3 items-center">
+            <motion.button 
+              className="flex items-center gap-2 bg-[#29382f] hover:bg-[#35463b] text-white px-4 py-2 rounded-full transition-all border border-transparent hover:border-[#38e07b]/30"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <motion.div 
+                className="w-2 h-2 rounded-full bg-[#38e07b]"
+                animate={{ 
+                  boxShadow: ['0 0 8px rgba(56,224,123,0.6)', '0 0 16px rgba(56,224,123,0.8)', '0 0 8px rgba(56,224,123,0.6)']
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
               />
-            </div>
+              <span className="text-sm font-bold font-mono">0x12...89</span>
+            </motion.button>
+            <motion.button 
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-[#29382f] text-white hover:bg-[#35463b] transition-colors relative"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <span className="absolute top-2.5 right-3 w-2 h-2 bg-red-500 rounded-full border border-[#111714]" />
+              <Icon name="notifications" size="sm" />
+            </motion.button>
+            <div className="w-10 h-10 rounded-full bg-gray-600 bg-cover bg-center border-2 border-[#29382f]" 
+                 style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face')" }} />
+          </div>
+        </motion.header>
 
-            {/* Project List */}
-            <div className="space-y-4">
-              <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-2">Monitored Projects</h3>
-              
-              {filteredProjects.map((project) => (
-                <div
-                  key={project.id}
-                  className={`bg-card-dark border border-border-dark rounded-lg p-4 transition-colors cursor-pointer group ${
-                    project.status === 'verified' ? 'hover:border-primary/50' :
-                    project.status === 'alert' ? 'hover:border-red-500/50' :
-                    'hover:border-yellow-400/50'
-                  } ${selectedProject?.id === project.id ? 'border-primary/50' : ''}`}
-                  onClick={() => setSelectedProject(project)}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h4 className={`font-bold text-sm transition-colors ${
-                        project.status === 'verified' ? 'text-white group-hover:text-primary' :
-                        project.status === 'alert' ? 'text-white group-hover:text-red-400' :
-                        'text-white group-hover:text-yellow-400'
-                      }`}>
-                        {project.name}
-                      </h4>
-                      <p className="text-text-secondary text-xs">{project.location} • ID: #{project.contractAddress}</p>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-6 lg:p-10 pb-20">
+          <div className="max-w-6xl mx-auto flex flex-col gap-8">
+            {/* Page Heading Section */}
+            <motion.div 
+              className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <div className="flex flex-col gap-2 max-w-2xl">
+                <h1 className="text-white text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+                  Initiate New <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#38e07b] to-emerald-200">Public Work</span>
+                </h1>
+                <p className="text-[#9eb7a8] text-lg">Define project parameters, set AI verification milestones, and escrow funds via Smart Contract.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="secondary" className="text-[#9eb7a8] hover:text-white">Save Draft</Button>
+                <Button variant="secondary" className="text-[#38e07b] bg-[#38e07b]/10 border-[#38e07b]/20 hover:bg-[#38e07b]/20">
+                  Template Library
+                </Button>
+              </div>
+            </motion.div>
+
+            {/* Main Layout Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Left Column: Form */}
+              <motion.div 
+                className="lg:col-span-8 flex flex-col gap-6"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                {/* Basic Info Card */}
+                <div className="bg-[#1a211e] rounded-xl p-6 border border-[#29382f]">
+                  <h3 className="text-white text-lg font-bold mb-6 flex items-center gap-2">
+                    <Icon name="article" className="text-[#38e07b]" />
+                    Project Details
+                  </h3>
+                  <div className="flex flex-col gap-6">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-white text-sm font-medium">Project Name</span>
+                      <input 
+                        className="w-full bg-[#29382f] border-none rounded-xl text-white placeholder:text-[#9eb7a8] h-14 px-4 focus:ring-2 focus:ring-[#38e07b] focus:ring-opacity-50 transition-all font-medium" 
+                        placeholder="e.g. Lagos Main Bridge Repair" 
+                        type="text"
+                        value={projectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                      />
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <label className="flex flex-col gap-2">
+                        <span className="text-white text-sm font-medium">Contractor Wallet Address</span>
+                        <div className="relative">
+                          <input 
+                            className="w-full bg-[#29382f] border-none rounded-xl text-white placeholder:text-[#9eb7a8] h-14 pl-4 pr-12 focus:ring-2 focus:ring-[#38e07b] focus:ring-opacity-50 transition-all font-mono" 
+                            placeholder="0x..." 
+                            type="text"
+                            value={contractorAddress}
+                            onChange={(e) => setContractorAddress(e.target.value)}
+                          />
+                          <motion.button 
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-[#9eb7a8] hover:text-white p-2"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <Icon name="content_paste" size="sm" />
+                          </motion.button>
+                        </div>
+                      </label>
+                      <label className="flex flex-col gap-2">
+                        <span className="text-white text-sm font-medium">Total Budget Allocation</span>
+                        <div className="relative">
+                          <input 
+                            className="w-full bg-[#29382f] border-none rounded-xl text-white placeholder:text-[#9eb7a8] h-14 pl-12 pr-4 focus:ring-2 focus:ring-[#38e07b] focus:ring-opacity-50 transition-all font-bold text-lg" 
+                            placeholder="5.0" 
+                            type="number"
+                            value={budget}
+                            onChange={(e) => setBudget(e.target.value)}
+                          />
+                          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-full bg-white/10">
+                            <Icon name="currency_bitcoin" size="sm" className="text-white" />
+                          </div>
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9eb7a8] font-bold text-sm">ETH</span>
+                        </div>
+                      </label>
                     </div>
-                    <Badge variant={project.status}>
-                      {project.status === 'verified' ? '✓ Verified' :
-                       project.status === 'alert' ? '⚠️ Alert' :
-                       '⏳ Pending'}
-                    </Badge>
-                  </div>
-
-                  <ProgressBar 
-                    value={project.progress} 
-                    variant={project.status === 'alert' ? 'error' : 'primary'}
-                    className="mb-3"
-                  />
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-white">{project.progress}% Complete</span>
-                    {project.status === 'verified' && project.aiConfidence && (
-                      <div className="flex items-center gap-1 text-xs text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
-                        <span>🤖</span> Gemini AI Verified
-                      </div>
-                    )}
-                    {project.status === 'alert' && (
-                      <span className="text-xs text-red-400">Material Shortage</span>
-                    )}
-                    {project.status === 'pending' && (
-                      <span className="text-xs text-text-secondary">Waiting for visual proof</span>
-                    )}
                   </div>
                 </div>
-              ))}
+
+                {/* AI Milestone Card */}
+                <motion.div 
+                  className="bg-[#1a211e] rounded-xl p-6 border border-[#29382f] relative overflow-hidden group"
+                  whileHover={{ borderColor: '#38e07b40' }}
+                >
+                  {/* Gradient decoration */}
+                  <motion.div 
+                    className="absolute top-0 right-0 w-64 h-64 bg-[#38e07b]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"
+                    animate={{ 
+                      scale: [1, 1.1, 1],
+                      opacity: [0.3, 0.5, 0.3]
+                    }}
+                    transition={{ duration: 4, repeat: Infinity }}
+                  />
+                  <div className="flex justify-between items-start mb-6">
+                    <h3 className="text-white text-lg font-bold flex items-center gap-2">
+                      <Icon name="smart_toy" className="text-[#38e07b]" />
+                      Milestone 1 Criteria (AI Oracle)
+                    </h3>
+                    <motion.div 
+                      className="px-2 py-1 bg-[#38e07b]/20 rounded text-[#38e07b] text-xs font-bold uppercase tracking-wide"
+                      animate={{ 
+                        boxShadow: ['0 0 0 rgba(56,224,123,0)', '0 0 10px rgba(56,224,123,0.3)', '0 0 0 rgba(56,224,123,0)']
+                      }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                    >
+                      Powered by Gemini 2.5
+                    </motion.div>
+                  </div>
+                  <label className="flex flex-col gap-2 relative z-10">
+                    <span className="text-[#9eb7a8] text-sm">Describe the visual evidence required for funds release. The AI will verify uploaded photos against this prompt.</span>
+                    <textarea 
+                      className="w-full bg-[#29382f] border-none rounded-xl text-white placeholder:text-[#9eb7a8] p-4 focus:ring-2 focus:ring-[#38e07b] focus:ring-opacity-50 transition-all resize-none leading-relaxed" 
+                      placeholder="e.g. High-angle photo of freshly poured concrete foundation with visible rebar reinforcement grid. Must show at least 4 corner pilings." 
+                      rows={4}
+                      value={milestoneDescription}
+                      onChange={(e) => setMilestoneDescription(e.target.value)}
+                    />
+                  </label>
+                  <div className="mt-4 flex gap-2">
+                    <motion.button 
+                      className="text-xs font-bold text-[#38e07b] hover:text-white bg-[#38e07b]/10 hover:bg-[#38e07b]/20 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Icon name="auto_awesome" size="sm" />
+                      Enhance Prompt with AI
+                    </motion.button>
+                  </div>
+                </motion.div>
+              </motion.div>
+
+              {/* Right Column: Summary & Actions */}
+              <motion.div 
+                className="lg:col-span-4 flex flex-col gap-6"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+              >
+                {/* Summary Card */}
+                <div className="bg-[#1a211e] rounded-xl p-6 border border-[#29382f] flex flex-col gap-4 shadow-xl">
+                  <h4 className="text-white font-bold text-lg">Contract Summary</h4>
+                  <div className="flex flex-col gap-3 py-4 border-y border-[#29382f]">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-[#9eb7a8]">Network Status</span>
+                      <span className="text-[#38e07b] font-medium flex items-center gap-1">
+                        <motion.span 
+                          className="w-2 h-2 rounded-full bg-[#38e07b]"
+                          animate={{ opacity: [1, 0.3, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        />
+                        Active
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-[#9eb7a8]">Est. Gas Fee</span>
+                      <span className="text-white font-mono">0.0042 ETH</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-[#9eb7a8]">Oracle Fee</span>
+                      <span className="text-white font-mono">0.0100 ETH</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-[#9eb7a8] text-sm font-medium pb-1">Total Value Locked</span>
+                    <div className="flex flex-col items-end">
+                      <motion.span 
+                        className="text-3xl font-bold text-white tracking-tight"
+                        animate={{ scale: [1, 1.02, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        {budget ? (parseFloat(budget) + 0.0142).toFixed(4) : '5.0142'}
+                      </motion.span>
+                      <span className="text-xs text-[#9eb7a8] font-mono">ETH</span>
+                    </div>
+                  </div>
+                  <div className="pt-2">
+                    <motion.button 
+                      className="w-full bg-[#38e07b] hover:bg-[#2bc466] text-[#111714] h-14 rounded-full font-bold text-lg shadow-[0_4px_14px_0_rgba(56,224,123,0.39)] transition-all flex items-center justify-center gap-2 group"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <span>Deploy & Fund</span>
+                      <motion.div
+                        animate={{ x: [0, 4, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        <Icon name="arrow_forward" />
+                      </motion.div>
+                    </motion.button>
+                    <p className="text-center text-xs text-[#9eb7a8] mt-3">
+                      By deploying, you agree to the <a className="text-[#38e07b] hover:underline" href="#">DAO Constitution</a>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Map Preview */}
+                <motion.div 
+                  className="bg-[#1a211e] rounded-xl border border-[#29382f] overflow-hidden h-48 relative group cursor-pointer"
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center opacity-60 group-hover:opacity-80 transition-opacity" 
+                    style={{ backgroundImage: "url('https://images.unsplash.com/photo-1577717903315-1691ae25ab3f?w=400&h=300&fit=crop')" }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#111714] to-transparent" />
+                  <div className="absolute bottom-4 left-4">
+                    <div className="flex items-center gap-1 text-white font-bold text-sm">
+                      <Icon name="location_on" className="text-[#38e07b]" size="sm" />
+                      Set Location Geofence
+                    </div>
+                    <p className="text-xs text-[#9eb7a8] ml-5">Optional: Restrict AI validation to coordinates.</p>
+                  </div>
+                </motion.div>
+              </motion.div>
             </div>
           </div>
-
-          {/* Bottom Help */}
-          <div className="p-4 border-t border-border-dark bg-background-dark/50">
-            <Button variant="ghost" className="flex items-center justify-between w-full text-left text-text-secondary hover:text-white text-xs group">
-              <span className="flex items-center gap-2">
-                <span>❓</span>
-                Need help with smart contracts?
-              </span>
-              <span className="group-hover:translate-x-1 transition-transform">→</span>
-            </Button>
-          </div>
-        </aside>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };

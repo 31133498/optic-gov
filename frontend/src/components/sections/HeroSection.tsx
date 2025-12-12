@@ -55,16 +55,17 @@ export const HeroSection = () => {
               <Button 
                 size="lg" 
                 className="min-w-[140px]"
-                onClick={() => window.open('/register', '_self')}
+                onClick={() => window.open('/transparency-map', '_self')}
               >
-                Launch App
+                View Map
               </Button>
               <Button 
                 variant="secondary" 
                 size="lg" 
                 className="min-w-[140px] group"
+                onClick={() => window.open('/register', '_self')}
               >
-                <span className="mr-2">View Demo</span>
+                <span className="mr-2">Launch App</span>
                 <Icon 
                   name="arrow_forward" 
                   size="sm" 

@@ -1,30 +1,25 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Icon } from '@/components/ui/Icon';
 import { Web3Icon } from '@/components/ui/Web3Icon';
-import { UserTypeSelector } from '@/components/ui/UserTypeSelector';
 import { useLogin } from '@/hooks/useLogin';
 
 export const LoginForm = () => {
   const { data, errors, isLoading, updateField, login, connectWallet } = useLogin();
-  const [userType, setUserType] = useState<'governor' | 'contractor'>('contractor');
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const success = await login();
     if (success) {
-      // Route based on selected user type
-      window.location.href = userType === 'governor' ? '/governor' : '/contractor';
+      console.log('Login successful!');
     }
   };
 
   const handleWalletConnect = async () => {
     const success = await connectWallet();
     if (success) {
-      // Route based on selected user type
-      window.location.href = userType === 'governor' ? '/governor' : '/contractor';
+      console.log('Wallet connected!');
     }
   };
 
@@ -37,13 +32,7 @@ export const LoginForm = () => {
         transition={{ duration: 0.5 }}
       >
         <h3 className="text-white text-2xl font-bold mb-2">Sign in to your account</h3>
-        <p className="text-[#9cbaa6] text-sm">Welcome back, {userType === 'governor' ? 'Governor' : 'Contractor'}.</p>
-        
-        <UserTypeSelector 
-          userType={userType} 
-          onChange={setUserType} 
-          className="mt-4" 
-        />
+        <p className="text-[#9cbaa6] text-sm">Welcome back, Governor.</p>
       </motion.div>
 
       {errors.general && (
@@ -110,7 +99,7 @@ export const LoginForm = () => {
           label="Email Address"
           type="email"
           icon="mail"
-          placeholder={userType === 'governor' ? 'governor@optic-gov.eth' : 'contractor@company.com'}
+          placeholder="governor@optic-gov.eth"
           value={data.email}
           onChange={(e) => updateField('email', e.target.value)}
           error={errors.email}
