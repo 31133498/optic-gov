@@ -79,6 +79,14 @@ class MilestoneGenerate(BaseModel):
     project_description: str
     total_budget: float
 
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    total_budget: Optional[float] = None
+    project_latitude: Optional[float] = None
+    project_longitude: Optional[float] = None
+    location_tolerance_km: Optional[float] = None
+
 class VerificationResponse(BaseModel):
     verified: bool
     confidence_score: int
@@ -192,6 +200,45 @@ async def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     
     db.commit()
     return {"project_id": db_project.id, "milestones_created": len(milestone_descriptions)}
+
+@app.get("/projects")
+async def get_all_projects(db: Session = Depends(get_db)):
+    projects = db.query(Project).all()
+    return projects
+
+@app.get("/projects/{project_id}")
+async def get_project(project_id: int, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+@app.put("/projects/{project_id}")
+async def update_project(project_id: int, project_update: ProjectUpdate, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Update only provided fields
+    for field, value in project_update.dict(exclude_unset=True).items():
+        setattr(project, field, value)
+    
+    db.commit()
+    db.refresh(project)
+    return project
+
+@app.delete("/projects/{project_id}")
+async def delete_project(project_id: int, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Delete associated milestones first
+    db.query(Milestone).filter(Milestone.project_id == project_id).delete()
+    # Delete project
+    db.delete(project)
+    db.commit()
+    return {"message": "Project deleted successfully"}
 
 def extract_video_location(video_path: str):
     """Extract GPS coordinates from video metadata using ffprobe"""
