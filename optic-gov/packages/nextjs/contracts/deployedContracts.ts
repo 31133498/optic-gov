@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   11155111: {
     OpticGov: {
-      address: "0x0Ff0bC101e41c18C5cA8BDa9C975cf7cD620F2c8",
+      address: "0x6d42A618a0675519Ac4d143aF915065d7F5772B9",
       abi: [
         {
           inputs: [
@@ -307,7 +307,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 9816991,
+      deployedOnBlock: 9822368,
     },
   },
 } as const;

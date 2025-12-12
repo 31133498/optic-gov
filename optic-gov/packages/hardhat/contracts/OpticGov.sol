@@ -13,14 +13,16 @@ contract OpticGov {
 
     // --- 1. STATE VARIABLES & STRUCTS ---
 
+    // The address of the AI Oracle, set once in the constructor.
     address public immutable oracleAddress;
+    // The address that deployed the contract, which is also the initial funder.
     address public immutable funder; 
 
     struct Milestone {
         string description;
         uint256 amount; 
-        bool isCompleted;
-        bool isReleased;
+        bool isCompleted; // True if processed (paid or rejected)
+        bool isReleased;  // True if funds were actually sent
         string evidenceIpfsHash; 
     }
 
@@ -39,7 +41,7 @@ contract OpticGov {
 
     modifier onlyOracle() {
         if (msg.sender != oracleAddress) {
-            revert Unauthorized(msg.sender); // Using custom error
+            revert Unauthorized(msg.sender); 
         }
         _;
     }
@@ -51,6 +53,7 @@ contract OpticGov {
         _;
     }
     
+    // NOTE: projectId is indexed for frontend filtering
     event ProjectCreated(uint256 indexed projectId, address indexed contractor, uint256 budget);
     event MilestoneReleased(uint256 indexed projectId, uint256 indexed milestoneIndex, uint256 amount);
     event EvidenceSubmitted(uint256 indexed projectId, uint256 indexed milestoneIndex, string ipfsHash);
@@ -145,11 +148,14 @@ contract OpticGov {
             revert AlreadyCompleted();
         }
         
+        // Mark milestone as processed regardless of verdict
+        milestone.isCompleted = true; 
+        
         if (_verdict == true) {
-            milestone.isCompleted = true;
             milestone.isReleased = true; 
             project.fundsReleased += milestone.amount;
 
+            // Use call to send funds securely
             (bool success, ) = payable(project.contractor).call{value: milestone.amount}("");
             if (!success) {
                 revert TransferFailed();
@@ -157,7 +163,9 @@ contract OpticGov {
             
             emit MilestoneReleased(_projectId, _milestoneIndex, milestone.amount);
         }
+        // If _verdict is false, the milestone is marked complete but funds are not released.
     }
 
+    // Allows the contract to receive ETH directly (e.g., in a simple transfer)
     receive() external payable {}
 }
